@@ -5,7 +5,7 @@ use bytes::Bytes;
 use casper_binary_port::{
     BinaryMessage, BinaryMessageCodec, BinaryRequest, BinaryRequestHeader, BinaryResponse,
     BinaryResponseAndRequest, BinaryResponseHeader, GetRequest, InformationRequest,
-    InformationRequestTag, PayloadEntity,
+    InformationRequestTag, NodeStatus, PayloadEntity,
 };
 use casper_types::{
     bytesrepr::{self, FromBytes, ToBytes},
@@ -74,7 +74,7 @@ async fn main() -> ExitCode {
     let args = Args::parse();
 
     let (id, key) = match &args.commands {
-        Commands::NodeStatus => todo!(),
+        Commands::NodeStatus => (InformationRequestTag::NodeStatus, vec![]),
         Commands::BlockHeader { hash, height } => {
             let block_id = match (hash, height) {
                 (None, None) => None,
@@ -133,20 +133,28 @@ async fn main() -> ExitCode {
     };
 
     match args.commands {
-        Commands::NodeStatus => todo!(),
-        Commands::BlockHeader { hash, height } => {
-            match parse_response::<BlockHeader>(response.response()) {
-                Ok(maybe_block_header) => println!(
-                    "{}{:#?}",
-                    if args.verbose { "- BlockHeader:\n" } else { "" },
-                    maybe_block_header
-                ),
-                Err(err) => {
-                    eprintln!("{err}");
-                    return ExitCode::FAILURE;
-                }
+        Commands::NodeStatus => match parse_response::<NodeStatus>(response.response()) {
+            Ok(maybe_block_header) => println!(
+                "{}{:#?}",
+                if args.verbose { "- NodeStatus:\n" } else { "" },
+                maybe_block_header
+            ),
+            Err(err) => {
+                eprintln!("{err}");
+                return ExitCode::FAILURE;
             }
-        }
+        },
+        Commands::BlockHeader { .. } => match parse_response::<BlockHeader>(response.response()) {
+            Ok(maybe_block_header) => println!(
+                "{}{:#?}",
+                if args.verbose { "- BlockHeader:\n" } else { "" },
+                maybe_block_header
+            ),
+            Err(err) => {
+                eprintln!("{err}");
+                return ExitCode::FAILURE;
+            }
+        },
         Commands::GenericInfo { id, key } => todo!(),
     }
 
