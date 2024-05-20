@@ -5,11 +5,11 @@ use bytes::Bytes;
 use casper_binary_port::{
     BinaryMessage, BinaryMessageCodec, BinaryRequest, BinaryRequestHeader, BinaryResponse,
     BinaryResponseAndRequest, BinaryResponseHeader, GetRequest, InformationRequest,
-    InformationRequestTag,
+    InformationRequestTag, PayloadEntity,
 };
 use casper_types::{
     bytesrepr::{self, FromBytes, ToBytes},
-    BlockHash, BlockIdentifier, ProtocolVersion,
+    BlockHash, BlockHeader, BlockIdentifier, ProtocolVersion,
 };
 use clap::{error, Parser, Subcommand};
 use futures::{SinkExt, StreamExt};
@@ -75,7 +75,25 @@ struct ResponseWrapper(BinaryResponseAndRequest);
 impl fmt::Display for ResponseWrapper {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let binary_response = self.0.response();
-        write!(f, "{:?}", binary_response)
+        writeln!(
+            f,
+            "- Protocol version: {}",
+            binary_response.protocol_version()
+        )?;
+
+        let returned_data_type_tag = binary_response.returned_data_type_tag();
+        match returned_data_type_tag {
+            Some(x) => todo!(),
+            None => todo!(),
+        }
+
+        // writeln!(
+        //     f,
+        //     "- Returned data type: {} ({})",
+        //     returned_data_type_tag.map_or("?".to_string(), |i| i.to_string())
+        // )?;
+
+        Ok(())
     }
 }
 
@@ -83,12 +101,12 @@ impl fmt::Display for ResponseWrapper {
 async fn main() -> ExitCode {
     let args = Args::parse();
 
-    let (id, key) = match args.commands {
+    let (id, key) = match &args.commands {
         Commands::NodeStatus => todo!(),
         Commands::BlockHeader { hash, height } => {
             let block_id = match (hash, height) {
                 (None, None) => None,
-                (None, Some(height)) => Some(BlockIdentifier::Height(height)),
+                (None, Some(height)) => Some(BlockIdentifier::Height(*height)),
                 (Some(hash), None) => {
                     let digest =
                         casper_types::Digest::from_hex(&hash).expect("failed to parse hash");
@@ -104,10 +122,10 @@ async fn main() -> ExitCode {
             )
         }
         Commands::GenericInfo { id, key } => {
-            let key = key.map_or(vec![], |key| {
+            let key = key.as_ref().map_or(vec![], |key| {
                 hex::decode(key).expect("failed to decode key")
             });
-            (InformationRequestTag::try_from(id).expect("XXX"), key)
+            (InformationRequestTag::try_from(*id).expect("XXX"), key)
         }
     };
 
@@ -138,10 +156,38 @@ async fn main() -> ExitCode {
         println!("- Is success: {}", response.is_success())
     };
 
+    match args.commands {
+        Commands::NodeStatus => todo!(),
+        Commands::BlockHeader { hash, height } => {
+            match parse_response::<BlockHeader>(response.response()) {
+                Ok(maybe_block_header) => println!("- BlockHeader:\n{:#?}", maybe_block_header),
+                Err(err) => {
+                    eprintln!("{err}");
+                    return ExitCode::FAILURE;
+                }
+            }
+        }
+        Commands::GenericInfo { id, key } => todo!(),
+    }
+
     let response = ResponseWrapper(response);
     println!("{}", response);
 
     return ExitCode::SUCCESS;
+}
+
+fn parse_response<A: FromBytes + PayloadEntity>(
+    response: &BinaryResponse,
+) -> Result<Option<A>, RequestError> {
+    match response.returned_data_type_tag() {
+        Some(found) if found == u8::from(A::PAYLOAD_TYPE) => {
+            Ok(Some(bytesrepr::deserialize_from_slice(response.payload())?))
+        }
+        Some(other) => Err(RequestError::Response(format!(
+            "unsupported response type: {other}"
+        ))),
+        _ => Ok(None),
+    }
 }
 
 async fn send_request(request: BinaryRequest) -> Result<BinaryResponseAndRequest, RequestError> {
