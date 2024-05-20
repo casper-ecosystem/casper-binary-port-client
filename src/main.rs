@@ -129,16 +129,6 @@ async fn main() -> ExitCode {
         }
     };
 
-    // let response = match decode_response(response) {
-    //     Ok(response) => response,
-    //     Err(err) => {
-    //         eprintln!("{err}");
-    //         return ExitCode::FAILURE;
-    //     }
-    // };
-
-    //let response = response.expect("should not get empty response");
-
     if args.verbose {
         let original_request_len = response.original_request().len();
         println!(
@@ -153,18 +143,6 @@ async fn main() -> ExitCode {
 
     return ExitCode::SUCCESS;
 }
-
-// fn decode_response(
-//     response: Option<Bytes>,
-// ) -> Result<Option<BinaryResponseAndRequest>, RequestError> {
-//     match response {
-//         Some(bytes) => {
-//             let (header, _remainder) = BinaryResponseAndRequest::from_bytes(&bytes)?;
-//             Ok(Some(header))
-//         }
-//         None => Ok(None),
-//     }
-// }
 
 async fn send_request(request: BinaryRequest) -> Result<BinaryResponseAndRequest, RequestError> {
     let payload =
