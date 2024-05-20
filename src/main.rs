@@ -132,10 +132,10 @@ async fn main() -> ExitCode {
     if args.verbose {
         let original_request_len = response.original_request().len();
         println!(
-            "- Original, mirrored request length: {}\n",
+            "- Original, mirrored request length: {}",
             original_request_len
         );
-        println!("- Is success: {}\n", response.is_success())
+        println!("- Is success: {}", response.is_success())
     };
 
     let response = ResponseWrapper(response);
