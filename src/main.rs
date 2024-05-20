@@ -69,34 +69,6 @@ enum RequestError {
     Response(String),
 }
 
-#[derive(Debug)]
-struct ResponseWrapper(BinaryResponseAndRequest);
-
-impl fmt::Display for ResponseWrapper {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let binary_response = self.0.response();
-        writeln!(
-            f,
-            "- Protocol version: {}",
-            binary_response.protocol_version()
-        )?;
-
-        let returned_data_type_tag = binary_response.returned_data_type_tag();
-        match returned_data_type_tag {
-            Some(x) => todo!(),
-            None => todo!(),
-        }
-
-        // writeln!(
-        //     f,
-        //     "- Returned data type: {} ({})",
-        //     returned_data_type_tag.map_or("?".to_string(), |i| i.to_string())
-        // )?;
-
-        Ok(())
-    }
-}
-
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
     let args = Args::parse();
@@ -153,14 +125,22 @@ async fn main() -> ExitCode {
             "- Original, mirrored request length: {}",
             original_request_len
         );
-        println!("- Is success: {}", response.is_success())
+        println!("- Is success: {}", response.is_success());
+        println!(
+            "- Protocol version: {}",
+            response.response().protocol_version()
+        );
     };
 
     match args.commands {
         Commands::NodeStatus => todo!(),
         Commands::BlockHeader { hash, height } => {
             match parse_response::<BlockHeader>(response.response()) {
-                Ok(maybe_block_header) => println!("- BlockHeader:\n{:#?}", maybe_block_header),
+                Ok(maybe_block_header) => println!(
+                    "{}{:#?}",
+                    if args.verbose { "- BlockHeader:\n" } else { "" },
+                    maybe_block_header
+                ),
                 Err(err) => {
                     eprintln!("{err}");
                     return ExitCode::FAILURE;
@@ -169,9 +149,6 @@ async fn main() -> ExitCode {
         }
         Commands::GenericInfo { id, key } => todo!(),
     }
-
-    let response = ResponseWrapper(response);
-    println!("{}", response);
 
     return ExitCode::SUCCESS;
 }
