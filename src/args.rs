@@ -2,18 +2,18 @@ use clap::{Parser, Subcommand};
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum Information {
-    /// Block header request.
+    /// Retrieve block header by height or hash.
     BlockHeader {
         #[clap(long, conflicts_with = "height")]
         hash: Option<String>,
         #[clap(long, conflicts_with = "hash")]
         height: Option<u64>,
     },
-    /// Uptime.
+    /// Read node uptime.
     Uptime,
-    /// NodeStatus request.
+    /// Read node status.
     NodeStatus,
-    /// Chainspec raw bytes request.
+    /// Retrieve raw chainspec bytes.
     ChainspecRawBytes,
 }
 
@@ -23,9 +23,13 @@ pub(super) enum Commands {
     #[clap(subcommand)]
     Information(Information),
     /// Send record request with a given ID and key.
+    #[command(
+        after_help = "Please refer to `enum RecordId` from the casper-node repository for valid record IDs."
+    )]
     Record {
         #[clap(long, short)]
         id: u16,
+        /// Hex-encoded key.
         #[clap(long, short)]
         key: String,
     },

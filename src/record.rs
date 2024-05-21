@@ -17,6 +17,7 @@ fn handle_record_response(response: &BinaryResponseAndRequest) {
     let len = response.response().payload().len();
     if len > 0 {
         let hex = hex::encode(response.response().payload());
+        // TODO: Print length in verbose mode only.
         println!("{len} bytes: {hex}");
     } else {
         println!("{EMPTY_STR}");
