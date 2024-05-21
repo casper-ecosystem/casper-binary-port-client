@@ -90,8 +90,6 @@ struct Args {
 enum RequestConstructionError {
     #[error("invalid information type: {0}")]
     InvalidInfoType(u16),
-    #[error("can not create request: {0:?}")]
-    CannotCreateRequest(InformationRequestTag),
 }
 
 #[derive(Error, Debug)]
@@ -104,8 +102,6 @@ enum RequestError {
     Io(#[from] std::io::Error),
     #[error("failed to handle response: {0}")]
     Response(String),
-    #[error(transparent)]
-    Construction(#[from] RequestConstructionError),
 }
 
 fn print_option<T: fmt::Debug>(opt: Option<T>) {
@@ -141,7 +137,7 @@ async fn handle_information_request(req: Information) -> Result<(), RequestError
 
     let request = make_info_get_request(id, &key)?;
     let response = send_request(request).await?;
-    handle_info_response(id, &response);
+    handle_info_response(id, &response)?;
 
     Ok(())
 }
@@ -213,13 +209,8 @@ fn encode_request(req: &BinaryRequest) -> Result<Vec<u8>, bytesrepr::Error> {
 fn make_info_get_request(
     tag: InformationRequestTag,
     key: &[u8],
-) -> Result<BinaryRequest, RequestConstructionError> {
-    let Ok(information_request) = InformationRequest::try_from((tag, &key[..])) else {
-        return Err(RequestConstructionError::CannotCreateRequest(tag));
-    };
-    let get_request = information_request
-        .try_into()
-        .expect("should always be able to convert");
-
+) -> Result<BinaryRequest, RequestError> {
+    let information_request = InformationRequest::try_from((tag, &key[..]))?;
+    let get_request = information_request.try_into()?;
     Ok(BinaryRequest::Get(get_request))
 }
