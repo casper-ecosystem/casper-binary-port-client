@@ -5,7 +5,7 @@ use bytes::Bytes;
 use casper_binary_port::{
     BinaryMessage, BinaryMessageCodec, BinaryRequest, BinaryRequestHeader, BinaryResponse,
     BinaryResponseAndRequest, BinaryResponseHeader, GetRequest, InformationRequest,
-    InformationRequestTag, NodeStatus, PayloadEntity, RecordId, Uptime,
+    InformationRequestTag, NodeStatus, PayloadEntity, RecordId, UnknownRecordId, Uptime,
 };
 use casper_types::{
     bytesrepr::{self, FromBytes, ToBytes},
@@ -13,12 +13,14 @@ use casper_types::{
 };
 use clap::{error, Parser, Subcommand};
 use futures::{SinkExt, StreamExt};
+use hex::FromHexError;
 use thiserror::Error;
 use tokio::net::TcpStream;
 use tokio_util::codec::Framed;
 
 // TODO[RC]: Get from command line
 pub const SUPPORTED_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::from_parts(2, 0, 0);
+pub const EMPTY_STR: &str = "[EMPTY]";
 
 #[derive(Debug, Subcommand)]
 enum Information {
@@ -81,7 +83,7 @@ enum Commands {
         #[clap(long, short)]
         id: u16,
         #[clap(long, short)]
-        key: Option<String>,
+        key: String,
     },
 }
 
@@ -104,16 +106,20 @@ enum RequestError {
     Io(#[from] std::io::Error),
     #[error("failed to handle response: {0}")]
     Response(String),
+    #[error("unknown record id: {0:?}")]
+    Record(UnknownRecordId),
+    #[error(transparent)]
+    FromHexError(#[from] FromHexError),
 }
 
 fn debug_print_option<T: fmt::Debug>(opt: Option<T>) {
     match opt {
         Some(val) => println!("{:#?}", val),
-        None => println!("[EMPTY]"),
+        None => println!("{EMPTY_STR}"),
     }
 }
 
-fn handle_info_response(
+fn handle_information_response(
     tag: InformationRequestTag,
     response: &BinaryResponseAndRequest,
 ) -> Result<(), RequestError> {
@@ -143,13 +149,34 @@ fn handle_info_response(
     }
 }
 
+fn handle_record_response(response: &BinaryResponseAndRequest) {
+    let len = response.response().payload().len();
+    if len > 0 {
+        let hex = hex::encode(response.response().payload());
+        println!("{len} bytes: {hex}");
+    } else {
+        println!("{EMPTY_STR}");
+    }
+}
+
 async fn handle_information_request(req: Information) -> Result<(), RequestError> {
     let id = req.id();
     let key = req.key();
 
     let request = make_info_get_request(id, &key)?;
     let response = send_request(request).await?;
-    handle_info_response(id, &response)?;
+    handle_information_response(id, &response)?;
+
+    Ok(())
+}
+
+async fn handle_record_request(record_id: u16, key: &str) -> Result<(), RequestError> {
+    let record_id: RecordId = record_id.try_into().map_err(RequestError::Record)?;
+    let key = hex::decode(key)?;
+
+    let request = make_record_get_request(record_id, &key)?;
+    let response = send_request(request).await?;
+    handle_record_response(&response);
 
     Ok(())
 }
@@ -159,10 +186,9 @@ async fn main() -> ExitCode {
     let args = Args::parse();
 
     let result = match args.commands {
-        Commands::Information(req) => handle_information_request(req),
-        Commands::Record { id, key } => todo!(),
-    }
-    .await;
+        Commands::Information(req) => handle_information_request(req).await,
+        Commands::Record { id, key } => handle_record_request(id, &key).await,
+    };
 
     if let Err(err) = result {
         eprintln!("{err}");
@@ -226,4 +252,12 @@ fn make_info_get_request(
     let information_request = InformationRequest::try_from((tag, &key[..]))?;
     let get_request = information_request.try_into()?;
     Ok(BinaryRequest::Get(get_request))
+}
+
+fn make_record_get_request(tag: RecordId, key: &[u8]) -> Result<BinaryRequest, RequestError> {
+    Ok(BinaryRequest::Get(GetRequest::Record {
+        // TODO: Is it needed to convert back and forth?
+        record_type_tag: tag.into(),
+        key: key.into(),
+    }))
 }
