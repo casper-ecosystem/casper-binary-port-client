@@ -120,24 +120,17 @@ fn handle_info_response(
     response: &BinaryResponseAndRequest,
 ) -> Result<(), RequestError> {
     match tag {
+        // TODO: Macro?
         InformationRequestTag::NodeStatus => {
             let res = parse_response::<NodeStatus>(response.response())?;
             print_option(res);
             Ok(())
         }
-        // InformationRequestTag::BlockHeader { .. } => {
-        //     match parse_response::<BlockHeader>(response.response()) {
-        //         Ok(maybe_block_header) => println!(
-        //             "{}{:#?}",
-        //             if args.verbose { "- BlockHeader:\n" } else { "" },
-        //             maybe_block_header
-        //         ),
-        //         Err(err) => {
-        //             eprintln!("{err}");
-        //             return ExitCode::FAILURE;
-        //         }
-        //     }
-        // }
+        InformationRequestTag::BlockHeader => {
+            let res = parse_response::<BlockHeader>(response.response())?;
+            print_option(res);
+            Ok(())
+        }
         _ => unimplemented!(),
     }
 }
