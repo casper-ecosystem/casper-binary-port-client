@@ -5,7 +5,7 @@ use bytes::Bytes;
 use casper_binary_port::{
     BinaryMessage, BinaryMessageCodec, BinaryRequest, BinaryRequestHeader, BinaryResponse,
     BinaryResponseAndRequest, BinaryResponseHeader, GetRequest, InformationRequest,
-    InformationRequestTag, NodeStatus, PayloadEntity,
+    InformationRequestTag, NodeStatus, PayloadEntity, RecordId,
 };
 use casper_types::{
     bytesrepr::{self, FromBytes, ToBytes},
@@ -21,7 +21,7 @@ use tokio_util::codec::Framed;
 pub const SUPPORTED_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::from_parts(2, 0, 0);
 
 #[derive(Debug, Subcommand)]
-enum Commands {
+enum Information {
     /// NodeStatus request.
     NodeStatus,
     /// Block header request.
@@ -31,8 +31,45 @@ enum Commands {
         #[clap(long, conflicts_with = "hash")]
         height: Option<u64>,
     },
+}
+
+impl Information {
+    fn id(&self) -> InformationRequestTag {
+        match self {
+            Information::NodeStatus => InformationRequestTag::NodeStatus,
+            Information::BlockHeader { .. } => InformationRequestTag::BlockHeader,
+        }
+    }
+
+    fn key(&self) -> Vec<u8> {
+        match self {
+            Information::BlockHeader { hash, height } => {
+                let block_id = match (hash, height) {
+                    (None, None) => None,
+                    (None, Some(height)) => Some(BlockIdentifier::Height(*height)),
+                    (Some(hash), None) => {
+                        let digest =
+                            casper_types::Digest::from_hex(&hash).expect("failed to parse hash");
+                        Some(BlockIdentifier::Hash(BlockHash::new(digest)))
+                    }
+                    (Some(_), Some(_)) => {
+                        unreachable!("should not have both hash and height")
+                    }
+                };
+                block_id.to_bytes().expect("should serialize")
+            }
+            Information::NodeStatus => Default::default(),
+        }
+    }
+}
+
+#[derive(Debug, Subcommand)]
+enum Commands {
     /// Send information request with a given ID and key.
-    GenericInfo {
+    #[clap(subcommand)]
+    Information(Information),
+    /// Send record request with a given ID and key.
+    Record {
         #[clap(long, short)]
         id: u16,
         #[clap(long, short)]
@@ -67,98 +104,160 @@ enum RequestError {
     Io(#[from] std::io::Error),
     #[error("failed to handle response: {0}")]
     Response(String),
+    #[error(transparent)]
+    Construction(#[from] RequestConstructionError),
+}
+
+fn print_option<T: fmt::Debug>(opt: Option<T>) {
+    match opt {
+        Some(val) => println!("{:#?}", val),
+        None => println!("[EMPTY]"),
+    }
+}
+
+fn handle_info_response(
+    tag: InformationRequestTag,
+    response: &BinaryResponseAndRequest,
+) -> Result<(), RequestError> {
+    match tag {
+        InformationRequestTag::NodeStatus => {
+            let res = parse_response::<NodeStatus>(response.response())?;
+            print_option(res);
+            Ok(())
+        }
+        // InformationRequestTag::BlockHeader { .. } => {
+        //     match parse_response::<BlockHeader>(response.response()) {
+        //         Ok(maybe_block_header) => println!(
+        //             "{}{:#?}",
+        //             if args.verbose { "- BlockHeader:\n" } else { "" },
+        //             maybe_block_header
+        //         ),
+        //         Err(err) => {
+        //             eprintln!("{err}");
+        //             return ExitCode::FAILURE;
+        //         }
+        //     }
+        // }
+        _ => unimplemented!(),
+    }
+}
+
+async fn handle_information_request(req: Information) -> Result<(), RequestError> {
+    let id = req.id();
+    let key = req.key();
+
+    let request = make_info_get_request(id, &key)?;
+    let response = send_request(request).await?;
+    handle_info_response(id, &response);
+
+    Ok(())
 }
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
     let args = Args::parse();
 
-    let (id, key) = match &args.commands {
-        Commands::NodeStatus => (InformationRequestTag::NodeStatus, vec![]),
-        Commands::BlockHeader { hash, height } => {
-            let block_id = match (hash, height) {
-                (None, None) => None,
-                (None, Some(height)) => Some(BlockIdentifier::Height(*height)),
-                (Some(hash), None) => {
-                    let digest =
-                        casper_types::Digest::from_hex(&hash).expect("failed to parse hash");
-                    Some(BlockIdentifier::Hash(BlockHash::new(digest)))
-                }
-                (Some(_), Some(_)) => {
-                    unreachable!("should not have both hash and height")
-                }
-            };
-            (
-                InformationRequestTag::BlockHeader,
-                block_id.to_bytes().expect("should serialize"),
-            )
-        }
-        Commands::GenericInfo { id, key } => {
-            let key = key.as_ref().map_or(vec![], |key| {
-                hex::decode(key).expect("failed to decode key")
-            });
-            (InformationRequestTag::try_from(*id).expect("XXX"), key)
-        }
-    };
-
-    let request = match make_info_get_request(id, &key) {
-        Ok(req) => req,
-        Err(err) => {
-            eprintln!("{err}");
-            return ExitCode::FAILURE;
-        }
-    };
-    if args.verbose {
-        println!("Sending request: {}", request);
+    let result = match args.commands {
+        Commands::Information(req) => handle_information_request(req),
+        Commands::Record { id, key } => todo!(),
     }
-    let response = match send_request(request).await {
-        Ok(response) => response,
-        Err(err) => {
-            eprintln!("{err}");
-            return ExitCode::FAILURE;
-        }
-    };
+    .await;
 
-    if args.verbose {
-        let original_request_len = response.original_request().len();
-        println!(
-            "- Original, mirrored request length: {}",
-            original_request_len
-        );
-        println!("- Is success: {}", response.is_success());
-        println!(
-            "- Protocol version: {}",
-            response.response().protocol_version()
-        );
-    };
-
-    match args.commands {
-        Commands::NodeStatus => match parse_response::<NodeStatus>(response.response()) {
-            Ok(maybe_block_header) => println!(
-                "{}{:#?}",
-                if args.verbose { "- NodeStatus:\n" } else { "" },
-                maybe_block_header
-            ),
-            Err(err) => {
-                eprintln!("{err}");
-                return ExitCode::FAILURE;
-            }
-        },
-        Commands::BlockHeader { .. } => match parse_response::<BlockHeader>(response.response()) {
-            Ok(maybe_block_header) => println!(
-                "{}{:#?}",
-                if args.verbose { "- BlockHeader:\n" } else { "" },
-                maybe_block_header
-            ),
-            Err(err) => {
-                eprintln!("{err}");
-                return ExitCode::FAILURE;
-            }
-        },
-        Commands::GenericInfo { id, key } => todo!(),
+    if let Err(err) = result {
+        eprintln!("{err}");
+        return ExitCode::FAILURE;
     }
 
     return ExitCode::SUCCESS;
+
+    // match &args.commands {
+    //     Commands::Record { id, key } => {
+    //         let key = key.as_ref().map_or(vec![], |key| {
+    //             hex::decode(key).expect("failed to decode key")
+    //         });
+    //         let serialized =
+    //             bytesrepr::serialize(bytesrepr::Bytes::from(key)).expect("should serialize");
+    //         (RecordId::try_from(*id)?, serialized)
+    //     }
+    //     Commands::NodeStatus => handle_information_request(InformationRequestTag::NodeStatus),
+    //     Commands::BlockHeader { hash, height } => {
+    //         let block_id = match (hash, height) {
+    //             (None, None) => None,
+    //             (None, Some(height)) => Some(BlockIdentifier::Height(*height)),
+    //             (Some(hash), None) => {
+    //                 let digest =
+    //                     casper_types::Digest::from_hex(&hash).expect("failed to parse hash");
+    //                 Some(BlockIdentifier::Hash(BlockHash::new(digest)))
+    //             }
+    //             (Some(_), Some(_)) => {
+    //                 unreachable!("should not have both hash and height")
+    //             }
+    //         };
+    //         (
+    //             InformationRequestTag::BlockHeader,
+    //             block_id.to_bytes().expect("should serialize"),
+    //         )
+    //     }
+    // };
+
+    // let request = match make_info_get_request(id, &key) {
+    //     Ok(req) => req,
+    //     Err(err) => {
+    //         eprintln!("{err}");
+    //         return ExitCode::FAILURE;
+    //     }
+    // };
+    // if args.verbose {
+    //     println!("Sending request: {}", request);
+    // }
+    // let response = match send_request(request).await {
+    //     Ok(response) => response,
+    //     Err(err) => {
+    //         eprintln!("{err}");
+    //         return ExitCode::FAILURE;
+    //     }
+    // };
+
+    // if args.verbose {
+    //     let original_request_len = response.original_request().len();
+    //     println!(
+    //         "- Original, mirrored request length: {}",
+    //         original_request_len
+    //     );
+    //     println!("- Is success: {}", response.is_success());
+    //     println!(
+    //         "- Protocol version: {}",
+    //         response.response().protocol_version()
+    //     );
+    // };
+
+    // match args.commands {
+    //     Commands::NodeStatus => match parse_response::<NodeStatus>(response.response()) {
+    //         Ok(maybe_block_header) => println!(
+    //             "{}{:#?}",
+    //             if args.verbose { "- NodeStatus:\n" } else { "" },
+    //             maybe_block_header
+    //         ),
+    //         Err(err) => {
+    //             eprintln!("{err}");
+    //             return ExitCode::FAILURE;
+    //         }
+    //     },
+    //     Commands::BlockHeader { .. } => match parse_response::<BlockHeader>(response.response()) {
+    //         Ok(maybe_block_header) => println!(
+    //             "{}{:#?}",
+    //             if args.verbose { "- BlockHeader:\n" } else { "" },
+    //             maybe_block_header
+    //         ),
+    //         Err(err) => {
+    //             eprintln!("{err}");
+    //             return ExitCode::FAILURE;
+    //         }
+    //     },
+    //     Commands::Record { id, key } => todo!(),
+    // }
+
+    //return ExitCode::SUCCESS;
 }
 
 fn parse_response<A: FromBytes + PayloadEntity>(
