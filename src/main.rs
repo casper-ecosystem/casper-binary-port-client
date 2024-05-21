@@ -171,10 +171,10 @@ async fn handle_information_request(req: Information) -> Result<(), RequestError
 }
 
 async fn handle_record_request(record_id: u16, key: &str) -> Result<(), RequestError> {
-    let record_id: RecordId = record_id.try_into().map_err(RequestError::Record)?;
+    let _: RecordId = record_id.try_into().map_err(RequestError::Record)?;
     let key = hex::decode(key)?;
 
-    let request = make_record_get_request(record_id, &key)?;
+    let request = make_record_get_request(record_id, key)?;
     let response = send_request(request).await?;
     handle_record_response(&response);
 
@@ -254,10 +254,9 @@ fn make_info_get_request(
     Ok(BinaryRequest::Get(get_request))
 }
 
-fn make_record_get_request(tag: RecordId, key: &[u8]) -> Result<BinaryRequest, RequestError> {
+fn make_record_get_request(tag: u16, key: Vec<u8>) -> Result<BinaryRequest, RequestError> {
     Ok(BinaryRequest::Get(GetRequest::Record {
-        // TODO: Is it needed to convert back and forth?
-        record_type_tag: tag.into(),
-        key: key.into(),
+        record_type_tag: tag,
+        key,
     }))
 }
