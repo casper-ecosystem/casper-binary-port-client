@@ -8,7 +8,7 @@ use casper_types::{
 };
 
 use crate::{
-    args::Information, communication::send_request, error::RequestError, utils::debug_print_option,
+    args::Information, communication::send_request, error::Error, utils::debug_print_option,
 };
 
 impl Information {
@@ -29,7 +29,7 @@ impl Information {
                     (None, Some(height)) => Some(BlockIdentifier::Height(*height)),
                     (Some(hash), None) => {
                         let digest =
-                            casper_types::Digest::from_hex(&hash).expect("failed to parse hash");
+                            casper_types::Digest::from_hex(hash).expect("failed to parse hash");
                         Some(BlockIdentifier::Hash(BlockHash::new(digest)))
                     }
                     (Some(_), Some(_)) => {
@@ -45,11 +45,11 @@ impl Information {
     }
 }
 
-pub(super) async fn handle_information_request(req: Information) -> Result<(), RequestError> {
+pub(super) async fn handle_information_request(req: Information) -> Result<(), Error> {
     let id = req.id();
     let key = req.key();
 
-    let request = make_info_get_request(id, &key)?;
+    let request = make_information_get_request(id, &key)?;
     let response = send_request(request).await?;
     handle_information_response(id, &response)?;
 
@@ -59,7 +59,7 @@ pub(super) async fn handle_information_request(req: Information) -> Result<(), R
 fn handle_information_response(
     tag: InformationRequestTag,
     response: &BinaryResponseAndRequest,
-) -> Result<(), RequestError> {
+) -> Result<(), Error> {
     match tag {
         // TODO: Macro?
         InformationRequestTag::NodeStatus => {
@@ -88,25 +88,24 @@ fn handle_information_response(
 
 fn parse_response<A: FromBytes + PayloadEntity>(
     response: &BinaryResponse,
-) -> Result<Option<A>, RequestError> {
+) -> Result<Option<A>, Error> {
     match response.returned_data_type_tag() {
         Some(found) if found == u8::from(A::PAYLOAD_TYPE) => {
-            println!("{}", response.payload().len());
+            // TODO: Verbose: print length of payload
             Ok(Some(bytesrepr::deserialize_from_slice(response.payload())?))
         }
-        Some(other) => Err(RequestError::Response(format!(
+        Some(other) => Err(Error::Response(format!(
             "unsupported response type: {other}"
         ))),
         _ => Ok(None),
     }
 }
 
-// TODO: _information_
-fn make_info_get_request(
+fn make_information_get_request(
     tag: InformationRequestTag,
     key: &[u8],
-) -> Result<BinaryRequest, RequestError> {
-    let information_request = InformationRequest::try_from((tag, &key[..]))?;
+) -> Result<BinaryRequest, Error> {
+    let information_request = InformationRequest::try_from((tag, key))?;
     let get_request = information_request.try_into()?;
     Ok(BinaryRequest::Get(get_request))
 }

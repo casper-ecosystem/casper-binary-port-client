@@ -1,9 +1,9 @@
 use casper_binary_port::{BinaryRequest, BinaryResponseAndRequest, GetRequest, RecordId};
 
-use crate::{communication::send_request, error::RequestError, utils::EMPTY_STR};
+use crate::{communication::send_request, error::Error, utils::EMPTY_STR};
 
-pub(super) async fn handle_record_request(record_id: u16, key: &str) -> Result<(), RequestError> {
-    let _: RecordId = record_id.try_into().map_err(RequestError::Record)?;
+pub(super) async fn handle_record_request(record_id: u16, key: &str) -> Result<(), Error> {
+    let _: RecordId = record_id.try_into().map_err(Error::Record)?;
     let key = hex::decode(key)?;
 
     let request = make_record_get_request(record_id, key)?;
@@ -23,7 +23,7 @@ fn handle_record_response(response: &BinaryResponseAndRequest) {
     }
 }
 
-fn make_record_get_request(tag: u16, key: Vec<u8>) -> Result<BinaryRequest, RequestError> {
+fn make_record_get_request(tag: u16, key: Vec<u8>) -> Result<BinaryRequest, Error> {
     Ok(BinaryRequest::Get(GetRequest::Record {
         record_type_tag: tag,
         key,

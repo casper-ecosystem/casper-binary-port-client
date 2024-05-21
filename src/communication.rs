@@ -6,9 +6,9 @@ use futures::{SinkExt, StreamExt};
 use tokio::net::TcpStream;
 use tokio_util::codec::Framed;
 
-use crate::{error::RequestError, utils::SUPPORTED_PROTOCOL_VERSION};
+use crate::{error::Error, utils::SUPPORTED_PROTOCOL_VERSION};
 
-async fn connect_to_node() -> Result<Framed<TcpStream, BinaryMessageCodec>, RequestError> {
+async fn connect_to_node() -> Result<Framed<TcpStream, BinaryMessageCodec>, Error> {
     // TODO[RC]: Get address from command line
     let stream = TcpStream::connect("127.0.0.1:28103").await?;
     Ok(Framed::new(stream, BinaryMessageCodec::new(4_194_304)))
@@ -24,7 +24,7 @@ fn encode_request(req: &BinaryRequest) -> Result<Vec<u8>, bytesrepr::Error> {
 
 pub(crate) async fn send_request(
     request: BinaryRequest,
-) -> Result<BinaryResponseAndRequest, RequestError> {
+) -> Result<BinaryResponseAndRequest, Error> {
     let payload =
         BinaryMessage::new(encode_request(&request).expect("should always serialize a request"));
 
@@ -32,12 +32,11 @@ pub(crate) async fn send_request(
     client.send(payload).await?;
     let maybe_response = client.next().await;
 
-    match maybe_response {
-        Some(response) => {
-            let response = response?;
-            let payload = response.payload();
-            return Ok(bytesrepr::deserialize_from_slice(payload)?);
-        }
-        None => return Err(RequestError::Response("empty response".to_string())),
-    }
+    let Some(response) = maybe_response else {
+        return Err(Error::Response("empty response".to_string()));
+    };
+
+    let response = response?;
+    let payload = response.payload();
+    Ok(bytesrepr::deserialize_from_slice(payload)?)
 }

@@ -3,9 +3,8 @@ use casper_types::bytesrepr;
 use hex::FromHexError;
 use thiserror::Error;
 
-// TODO: Just Error
 #[derive(Error, Debug)]
-pub(crate) enum RequestError {
+pub(crate) enum Error {
     #[error(transparent)]
     Bytesrepr(#[from] bytesrepr::Error),
     #[error(transparent)]
@@ -17,5 +16,5 @@ pub(crate) enum RequestError {
     #[error("unknown record id: {0:?}")]
     Record(UnknownRecordId),
     #[error(transparent)]
-    FromHexError(#[from] FromHexError),
+    FromHex(#[from] FromHexError),
 }
