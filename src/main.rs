@@ -5,11 +5,11 @@ use bytes::Bytes;
 use casper_binary_port::{
     BinaryMessage, BinaryMessageCodec, BinaryRequest, BinaryRequestHeader, BinaryResponse,
     BinaryResponseAndRequest, BinaryResponseHeader, GetRequest, InformationRequest,
-    InformationRequestTag, NodeStatus, PayloadEntity, RecordId,
+    InformationRequestTag, NodeStatus, PayloadEntity, RecordId, Uptime,
 };
 use casper_types::{
     bytesrepr::{self, FromBytes, ToBytes},
-    BlockHash, BlockHeader, BlockIdentifier, ProtocolVersion,
+    BlockHash, BlockHeader, BlockIdentifier, ChainspecRawBytes, ProtocolVersion,
 };
 use clap::{error, Parser, Subcommand};
 use futures::{SinkExt, StreamExt};
@@ -22,8 +22,6 @@ pub const SUPPORTED_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::from_pa
 
 #[derive(Debug, Subcommand)]
 enum Information {
-    /// NodeStatus request.
-    NodeStatus,
     /// Block header request.
     BlockHeader {
         #[clap(long, conflicts_with = "height")]
@@ -31,6 +29,12 @@ enum Information {
         #[clap(long, conflicts_with = "hash")]
         height: Option<u64>,
     },
+    /// Uptime.
+    Uptime,
+    /// NodeStatus request.
+    NodeStatus,
+    /// Chainspec raw bytes request.
+    ChainspecRawBytes,
 }
 
 impl Information {
@@ -38,6 +42,8 @@ impl Information {
         match self {
             Information::NodeStatus => InformationRequestTag::NodeStatus,
             Information::BlockHeader { .. } => InformationRequestTag::BlockHeader,
+            Information::ChainspecRawBytes => InformationRequestTag::ChainspecRawBytes,
+            Information::Uptime => InformationRequestTag::Uptime,
         }
     }
 
@@ -58,7 +64,9 @@ impl Information {
                 };
                 block_id.to_bytes().expect("should serialize")
             }
-            Information::NodeStatus => Default::default(),
+            Information::ChainspecRawBytes | Information::NodeStatus | Information::Uptime => {
+                Default::default()
+            }
         }
     }
 }
@@ -104,7 +112,7 @@ enum RequestError {
     Response(String),
 }
 
-fn print_option<T: fmt::Debug>(opt: Option<T>) {
+fn debug_print_option<T: fmt::Debug>(opt: Option<T>) {
     match opt {
         Some(val) => println!("{:#?}", val),
         None => println!("[EMPTY]"),
@@ -119,12 +127,22 @@ fn handle_info_response(
         // TODO: Macro?
         InformationRequestTag::NodeStatus => {
             let res = parse_response::<NodeStatus>(response.response())?;
-            print_option(res);
+            debug_print_option(res);
             Ok(())
         }
         InformationRequestTag::BlockHeader => {
             let res = parse_response::<BlockHeader>(response.response())?;
-            print_option(res);
+            debug_print_option(res);
+            Ok(())
+        }
+        InformationRequestTag::ChainspecRawBytes => {
+            let res = parse_response::<ChainspecRawBytes>(response.response())?;
+            debug_print_option(res);
+            Ok(())
+        }
+        InformationRequestTag::Uptime => {
+            let res = parse_response::<Uptime>(response.response())?;
+            debug_print_option(res);
             Ok(())
         }
         _ => unimplemented!(),
@@ -165,6 +183,7 @@ fn parse_response<A: FromBytes + PayloadEntity>(
 ) -> Result<Option<A>, RequestError> {
     match response.returned_data_type_tag() {
         Some(found) if found == u8::from(A::PAYLOAD_TYPE) => {
+            println!("{}", response.payload().len());
             Ok(Some(bytesrepr::deserialize_from_slice(response.payload())?))
         }
         Some(other) => Err(RequestError::Response(format!(
