@@ -94,12 +94,6 @@ struct Args {
     verbose: bool,
 }
 
-#[derive(Debug, Error)]
-enum RequestConstructionError {
-    #[error("invalid information type: {0}")]
-    InvalidInfoType(u16),
-}
-
 #[derive(Error, Debug)]
 enum RequestError {
     #[error(transparent)]
