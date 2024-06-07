@@ -1,10 +1,11 @@
 use casper_binary_port::{
     BinaryRequest, BinaryResponse, BinaryResponseAndRequest, InformationRequest,
-    InformationRequestTag, NodeStatus, PayloadEntity, Uptime,
+    InformationRequestTag, NodeStatus, PayloadEntity, TransactionWithExecutionInfo, Uptime,
 };
 use casper_types::{
     bytesrepr::{self, FromBytes, ToBytes},
-    BlockHash, BlockHeader, BlockIdentifier, ChainspecRawBytes, SignedBlock,
+    BlockHash, BlockHeader, BlockIdentifier, ChainspecRawBytes, DeployHash, SignedBlock,
+    Transaction, TransactionHash,
 };
 
 use crate::{
@@ -19,6 +20,7 @@ impl Information {
             Information::ChainspecRawBytes => InformationRequestTag::ChainspecRawBytes,
             Information::Uptime => InformationRequestTag::Uptime,
             Information::SignedBlock { .. } => InformationRequestTag::SignedBlock,
+            Information::Transaction { .. } => InformationRequestTag::Transaction,
         }
     }
 
@@ -28,6 +30,25 @@ impl Information {
             | Information::SignedBlock { hash, height } => get_block_key(hash, height),
             Information::ChainspecRawBytes | Information::NodeStatus | Information::Uptime => {
                 Default::default()
+            }
+            Information::Transaction {
+                hash,
+                with_finalized_approvals,
+                legacy,
+            } => {
+                let digest = casper_types::Digest::from_hex(hash).expect("failed to parse hash");
+                let hash = if *legacy {
+                    TransactionHash::Deploy(DeployHash::from(digest))
+                } else {
+                    TransactionHash::from_raw(digest.value())
+                };
+                let hash = hash.to_bytes().expect("should serialize");
+
+                let approvals = with_finalized_approvals
+                    .to_bytes()
+                    .expect("should serialize");
+
+                hash.into_iter().chain(approvals.into_iter()).collect()
             }
         }
     }
@@ -53,6 +74,9 @@ pub(super) async fn handle_information_request(req: Information) -> Result<(), E
     let key = req.key();
 
     let request = make_information_get_request(id, &key)?;
+
+    dbg!(&request);
+
     let response = send_request(request).await?;
     handle_information_response(id, &response)?;
 
@@ -90,7 +114,11 @@ fn handle_information_response(
             debug_print_option(res);
             Ok(())
         }
-        InformationRequestTag::Transaction => todo!(),
+        InformationRequestTag::Transaction => {
+            let res = parse_response::<TransactionWithExecutionInfo>(response.response())?;
+            debug_print_option(res);
+            Ok(())
+        }
         InformationRequestTag::Peers => todo!(),
         InformationRequestTag::LastProgress => todo!(),
         InformationRequestTag::ReactorState => todo!(),
@@ -123,7 +151,9 @@ fn make_information_get_request(
     tag: InformationRequestTag,
     key: &[u8],
 ) -> Result<BinaryRequest, Error> {
+    dbg!(1);
     let information_request = InformationRequest::try_from((tag, key))?;
+    dbg!(2);
     let get_request = information_request.try_into()?;
     Ok(BinaryRequest::Get(get_request))
 }

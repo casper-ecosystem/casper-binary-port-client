@@ -1,3 +1,4 @@
+use casper_types::TransactionHash;
 use clap::{Parser, Subcommand};
 
 #[derive(Debug, Subcommand)]
@@ -15,6 +16,18 @@ pub(crate) enum Information {
         hash: Option<String>,
         #[clap(long, conflicts_with = "hash")]
         height: Option<u64>,
+    },
+    /// Retrieve a transaction with approvals and execution info for a given hash.
+    Transaction {
+        /// Hash of the transaction to retrieve.
+        #[clap(long)]
+        hash: String,
+        /// Whether to return the deploy with the finalized approvals substituted.
+        #[clap(long, short)]
+        with_finalized_approvals: bool,
+        /// Whether to return the legacy deploy or the new transaction.
+        #[clap(long, short)]
+        legacy: bool,
     },
     /// Read node uptime.
     Uptime,
