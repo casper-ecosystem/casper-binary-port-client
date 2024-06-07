@@ -5,7 +5,7 @@ use casper_binary_port::{
 use casper_types::{
     bytesrepr::{self, FromBytes, ToBytes},
     BlockHash, BlockHeader, BlockIdentifier, ChainspecRawBytes, DeployHash, Peers, SignedBlock,
-    Transaction, TransactionHash,
+    TransactionHash,
 };
 
 use crate::{
@@ -50,7 +50,7 @@ impl Information {
                     .to_bytes()
                     .expect("should serialize");
 
-                hash.into_iter().chain(approvals.into_iter()).collect()
+                hash.into_iter().chain(approvals).collect()
             }
         }
     }
@@ -94,37 +94,30 @@ fn handle_information_response(
         InformationRequestTag::NodeStatus => {
             let res = parse_response::<NodeStatus>(response.response())?;
             debug_print_option(res);
-            Ok(())
         }
         InformationRequestTag::BlockHeader => {
             let res = parse_response::<BlockHeader>(response.response())?;
             debug_print_option(res);
-            Ok(())
         }
         InformationRequestTag::ChainspecRawBytes => {
             let res = parse_response::<ChainspecRawBytes>(response.response())?;
             debug_print_option(res);
-            Ok(())
         }
         InformationRequestTag::Uptime => {
             let res = parse_response::<Uptime>(response.response())?;
             debug_print_option(res);
-            Ok(())
         }
         InformationRequestTag::SignedBlock => {
             let res = parse_response::<SignedBlock>(response.response())?;
             debug_print_option(res);
-            Ok(())
         }
         InformationRequestTag::Transaction => {
             let res = parse_response::<TransactionWithExecutionInfo>(response.response())?;
             debug_print_option(res);
-            Ok(())
         }
         InformationRequestTag::Peers => {
             let res = parse_response::<Peers>(response.response())?;
             debug_print_option(res);
-            Ok(())
         }
         InformationRequestTag::LastProgress => todo!(),
         InformationRequestTag::ReactorState => todo!(),
@@ -136,6 +129,7 @@ fn handle_information_response(
         InformationRequestTag::ConsensusStatus => todo!(),
         InformationRequestTag::LatestSwitchBlockHeader => todo!(),
     }
+    Ok(())
 }
 
 fn parse_response<A: FromBytes + PayloadEntity>(

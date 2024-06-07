@@ -1,4 +1,3 @@
-use casper_types::TransactionHash;
 use clap::{Parser, Subcommand};
 
 #[derive(Debug, Subcommand)]
