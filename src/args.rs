@@ -36,6 +36,8 @@ pub(crate) enum Information {
     LastProgress,
     /// Returns current state of the main reactor.
     ReactorState,
+    /// Returns network name.
+    NetworkName,
     /// Read node status.
     NodeStatus,
     /// Retrieve raw chainspec bytes.

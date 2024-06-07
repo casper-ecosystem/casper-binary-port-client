@@ -1,6 +1,6 @@
 use casper_binary_port::{
     BinaryRequest, BinaryResponse, BinaryResponseAndRequest, InformationRequest,
-    InformationRequestTag, LastProgress, NodeStatus, PayloadEntity, ReactorStateName,
+    InformationRequestTag, LastProgress, NetworkName, NodeStatus, PayloadEntity, ReactorStateName,
     TransactionWithExecutionInfo, Uptime,
 };
 use casper_types::{
@@ -25,6 +25,7 @@ impl Information {
             Information::Peers => InformationRequestTag::Peers,
             Information::LastProgress => InformationRequestTag::LastProgress,
             Information::ReactorState => InformationRequestTag::ReactorState,
+            Information::NetworkName => InformationRequestTag::NetworkName,
         }
     }
 
@@ -34,6 +35,7 @@ impl Information {
             | Information::SignedBlock { hash, height } => get_block_key(hash, height),
             Information::LastProgress
             | Information::Peers
+            | Information::NetworkName
             | Information::ReactorState
             | Information::ChainspecRawBytes
             | Information::NodeStatus
@@ -129,7 +131,10 @@ fn handle_information_response(
             let res = parse_response::<ReactorStateName>(response.response())?;
             debug_print_option(res);
         }
-        InformationRequestTag::NetworkName => todo!(),
+        InformationRequestTag::NetworkName => {
+            let res = parse_response::<NetworkName>(response.response())?;
+            debug_print_option(res);
+        }
         InformationRequestTag::ConsensusValidatorChanges => todo!(),
         InformationRequestTag::BlockSynchronizerStatus => todo!(),
         InformationRequestTag::AvailableBlockRange => todo!(),
