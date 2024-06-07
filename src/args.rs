@@ -34,6 +34,8 @@ pub(crate) enum Information {
     Uptime,
     /// Returns last progress of the sync process.
     LastProgress,
+    /// Returns current state of the main reactor.
+    ReactorState,
     /// Read node status.
     NodeStatus,
     /// Retrieve raw chainspec bytes.
