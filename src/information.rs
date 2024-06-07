@@ -4,7 +4,7 @@ use casper_binary_port::{
 };
 use casper_types::{
     bytesrepr::{self, FromBytes, ToBytes},
-    BlockHash, BlockHeader, BlockIdentifier, ChainspecRawBytes,
+    BlockHash, BlockHeader, BlockIdentifier, ChainspecRawBytes, SignedBlock,
 };
 
 use crate::{
@@ -18,31 +18,34 @@ impl Information {
             Information::BlockHeader { .. } => InformationRequestTag::BlockHeader,
             Information::ChainspecRawBytes => InformationRequestTag::ChainspecRawBytes,
             Information::Uptime => InformationRequestTag::Uptime,
+            Information::SignedBlock { .. } => InformationRequestTag::SignedBlock,
         }
     }
 
     fn key(&self) -> Vec<u8> {
         match self {
-            Information::BlockHeader { hash, height } => {
-                let block_id = match (hash, height) {
-                    (None, None) => None,
-                    (None, Some(height)) => Some(BlockIdentifier::Height(*height)),
-                    (Some(hash), None) => {
-                        let digest =
-                            casper_types::Digest::from_hex(hash).expect("failed to parse hash");
-                        Some(BlockIdentifier::Hash(BlockHash::new(digest)))
-                    }
-                    (Some(_), Some(_)) => {
-                        unreachable!("should not have both hash and height")
-                    }
-                };
-                block_id.to_bytes().expect("should serialize")
-            }
+            Information::BlockHeader { hash, height }
+            | Information::SignedBlock { hash, height } => get_block_key(hash, height),
             Information::ChainspecRawBytes | Information::NodeStatus | Information::Uptime => {
                 Default::default()
             }
         }
     }
+}
+
+fn get_block_key(hash: &Option<String>, height: &Option<u64>) -> Vec<u8> {
+    let block_id = match (hash, height) {
+        (None, None) => None,
+        (None, Some(height)) => Some(BlockIdentifier::Height(*height)),
+        (Some(hash), None) => {
+            let digest = casper_types::Digest::from_hex(hash).expect("failed to parse hash");
+            Some(BlockIdentifier::Hash(BlockHash::new(digest)))
+        }
+        (Some(_), Some(_)) => {
+            unreachable!("should not have both hash and height")
+        }
+    };
+    block_id.to_bytes().expect("should serialize")
 }
 
 pub(super) async fn handle_information_request(req: Information) -> Result<(), Error> {
@@ -82,7 +85,22 @@ fn handle_information_response(
             debug_print_option(res);
             Ok(())
         }
-        _ => unimplemented!(),
+        InformationRequestTag::SignedBlock => {
+            let res = parse_response::<SignedBlock>(response.response())?;
+            debug_print_option(res);
+            Ok(())
+        }
+        InformationRequestTag::Transaction => todo!(),
+        InformationRequestTag::Peers => todo!(),
+        InformationRequestTag::LastProgress => todo!(),
+        InformationRequestTag::ReactorState => todo!(),
+        InformationRequestTag::NetworkName => todo!(),
+        InformationRequestTag::ConsensusValidatorChanges => todo!(),
+        InformationRequestTag::BlockSynchronizerStatus => todo!(),
+        InformationRequestTag::AvailableBlockRange => todo!(),
+        InformationRequestTag::NextUpgrade => todo!(),
+        InformationRequestTag::ConsensusStatus => todo!(),
+        InformationRequestTag::LatestSwitchBlockHeader => todo!(),
     }
 }
 

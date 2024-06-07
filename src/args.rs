@@ -9,6 +9,13 @@ pub(crate) enum Information {
         #[clap(long, conflicts_with = "hash")]
         height: Option<u64>,
     },
+    /// Retrieve block with signatures by height or hash.
+    SignedBlock {
+        #[clap(long, conflicts_with = "height")]
+        hash: Option<String>,
+        #[clap(long, conflicts_with = "hash")]
+        height: Option<u64>,
+    },
     /// Read node uptime.
     Uptime,
     /// Read node status.
