@@ -1,6 +1,7 @@
 use casper_binary_port::{
     BinaryRequest, BinaryResponse, BinaryResponseAndRequest, InformationRequest,
-    InformationRequestTag, NodeStatus, PayloadEntity, TransactionWithExecutionInfo, Uptime,
+    InformationRequestTag, LastProgress, NodeStatus, PayloadEntity, TransactionWithExecutionInfo,
+    Uptime,
 };
 use casper_types::{
     bytesrepr::{self, FromBytes, ToBytes},
@@ -22,6 +23,7 @@ impl Information {
             Information::SignedBlock { .. } => InformationRequestTag::SignedBlock,
             Information::Transaction { .. } => InformationRequestTag::Transaction,
             Information::Peers => InformationRequestTag::Peers,
+            Information::LastProgress => InformationRequestTag::LastProgress,
         }
     }
 
@@ -29,7 +31,8 @@ impl Information {
         match self {
             Information::BlockHeader { hash, height }
             | Information::SignedBlock { hash, height } => get_block_key(hash, height),
-            Information::Peers
+            Information::LastProgress
+            | Information::Peers
             | Information::ChainspecRawBytes
             | Information::NodeStatus
             | Information::Uptime => Default::default(),
@@ -76,9 +79,6 @@ pub(super) async fn handle_information_request(req: Information) -> Result<(), E
     let key = req.key();
 
     let request = make_information_get_request(id, &key)?;
-
-    dbg!(&request);
-
     let response = send_request(request).await?;
     handle_information_response(id, &response)?;
 
@@ -119,7 +119,10 @@ fn handle_information_response(
             let res = parse_response::<Peers>(response.response())?;
             debug_print_option(res);
         }
-        InformationRequestTag::LastProgress => todo!(),
+        InformationRequestTag::LastProgress => {
+            let res = parse_response::<LastProgress>(response.response())?;
+            debug_print_option(res);
+        }
         InformationRequestTag::ReactorState => todo!(),
         InformationRequestTag::NetworkName => todo!(),
         InformationRequestTag::ConsensusValidatorChanges => todo!(),
@@ -151,9 +154,7 @@ fn make_information_get_request(
     tag: InformationRequestTag,
     key: &[u8],
 ) -> Result<BinaryRequest, Error> {
-    dbg!(1);
     let information_request = InformationRequest::try_from((tag, key))?;
-    dbg!(2);
     let get_request = information_request.try_into()?;
     Ok(BinaryRequest::Get(get_request))
 }

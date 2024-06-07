@@ -32,6 +32,8 @@ pub(crate) enum Information {
     Peers,
     /// Read node uptime.
     Uptime,
+    /// Returns last progress of the sync process.
+    LastProgress,
     /// Read node status.
     NodeStatus,
     /// Retrieve raw chainspec bytes.
