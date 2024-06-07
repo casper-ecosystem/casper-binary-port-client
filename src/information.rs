@@ -4,7 +4,7 @@ use casper_binary_port::{
 };
 use casper_types::{
     bytesrepr::{self, FromBytes, ToBytes},
-    BlockHash, BlockHeader, BlockIdentifier, ChainspecRawBytes, DeployHash, SignedBlock,
+    BlockHash, BlockHeader, BlockIdentifier, ChainspecRawBytes, DeployHash, Peers, SignedBlock,
     Transaction, TransactionHash,
 };
 
@@ -21,6 +21,7 @@ impl Information {
             Information::Uptime => InformationRequestTag::Uptime,
             Information::SignedBlock { .. } => InformationRequestTag::SignedBlock,
             Information::Transaction { .. } => InformationRequestTag::Transaction,
+            Information::Peers => InformationRequestTag::Peers,
         }
     }
 
@@ -28,9 +29,10 @@ impl Information {
         match self {
             Information::BlockHeader { hash, height }
             | Information::SignedBlock { hash, height } => get_block_key(hash, height),
-            Information::ChainspecRawBytes | Information::NodeStatus | Information::Uptime => {
-                Default::default()
-            }
+            Information::Peers
+            | Information::ChainspecRawBytes
+            | Information::NodeStatus
+            | Information::Uptime => Default::default(),
             Information::Transaction {
                 hash,
                 with_finalized_approvals,
@@ -119,7 +121,11 @@ fn handle_information_response(
             debug_print_option(res);
             Ok(())
         }
-        InformationRequestTag::Peers => todo!(),
+        InformationRequestTag::Peers => {
+            let res = parse_response::<Peers>(response.response())?;
+            debug_print_option(res);
+            Ok(())
+        }
         InformationRequestTag::LastProgress => todo!(),
         InformationRequestTag::ReactorState => todo!(),
         InformationRequestTag::NetworkName => todo!(),

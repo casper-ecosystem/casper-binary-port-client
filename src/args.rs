@@ -29,6 +29,8 @@ pub(crate) enum Information {
         #[clap(long, short)]
         legacy: bool,
     },
+    /// Returns connected peers.
+    Peers,
     /// Read node uptime.
     Uptime,
     /// Read node status.
