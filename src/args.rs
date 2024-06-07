@@ -38,6 +38,8 @@ pub(crate) enum Information {
     ReactorState,
     /// Returns network name.
     NetworkName,
+    /// Returns consensus validator changes.
+    ConsensusValidatorChanges,
     /// Read node status.
     NodeStatus,
     /// Retrieve raw chainspec bytes.
