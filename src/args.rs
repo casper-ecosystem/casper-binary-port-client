@@ -40,6 +40,8 @@ pub(crate) enum Information {
     NetworkName,
     /// Returns consensus validator changes.
     ConsensusValidatorChanges,
+    /// Returns status of the BlockSynchronizer.
+    BlockSynchronizerStatus,
     /// Read node status.
     NodeStatus,
     /// Retrieve raw chainspec bytes.

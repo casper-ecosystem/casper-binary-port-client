@@ -5,8 +5,8 @@ use casper_binary_port::{
 };
 use casper_types::{
     bytesrepr::{self, FromBytes, ToBytes},
-    BlockHash, BlockHeader, BlockIdentifier, ChainspecRawBytes, DeployHash, Peers, SignedBlock,
-    TransactionHash,
+    BlockHash, BlockHeader, BlockIdentifier, BlockSynchronizerStatus, ChainspecRawBytes,
+    DeployHash, Peers, SignedBlock, TransactionHash,
 };
 
 use crate::{
@@ -29,6 +29,7 @@ impl Information {
             Information::ConsensusValidatorChanges => {
                 InformationRequestTag::ConsensusValidatorChanges
             }
+            Information::BlockSynchronizerStatus => InformationRequestTag::BlockSynchronizerStatus,
         }
     }
 
@@ -37,6 +38,7 @@ impl Information {
             Information::BlockHeader { hash, height }
             | Information::SignedBlock { hash, height } => get_block_key(hash, height),
             Information::LastProgress
+            | Information::BlockSynchronizerStatus
             | Information::Peers
             | Information::ConsensusValidatorChanges
             | Information::NetworkName
@@ -143,7 +145,10 @@ fn handle_information_response(
             let res = parse_response::<ConsensusValidatorChanges>(response.response())?;
             debug_print_option(res);
         }
-        InformationRequestTag::BlockSynchronizerStatus => todo!(),
+        InformationRequestTag::BlockSynchronizerStatus => {
+            let res = parse_response::<BlockSynchronizerStatus>(response.response())?;
+            debug_print_option(res);
+        }
         InformationRequestTag::AvailableBlockRange => todo!(),
         InformationRequestTag::NextUpgrade => todo!(),
         InformationRequestTag::ConsensusStatus => todo!(),
