@@ -48,10 +48,12 @@ pub(crate) enum Information {
     NextUpgrade,
     /// Consensus status request.
     ConsensusStatus,
-    /// Read node status.
-    NodeStatus,
     /// Retrieve raw chainspec bytes.
     ChainspecRawBytes,
+    /// Read node status.
+    NodeStatus,
+    /// Latest switch block header request.
+    LatestSwitchBlockHeader,
 }
 
 #[derive(Debug, Subcommand)]

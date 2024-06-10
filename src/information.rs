@@ -33,6 +33,7 @@ impl Information {
             Information::AvailableBlockRange => InformationRequestTag::AvailableBlockRange,
             Information::NextUpgrade => InformationRequestTag::NextUpgrade,
             Information::ConsensusStatus => InformationRequestTag::ConsensusStatus,
+            Information::LatestSwitchBlockHeader => InformationRequestTag::LatestSwitchBlockHeader,
         }
     }
 
@@ -43,6 +44,7 @@ impl Information {
             Information::LastProgress
             | Information::BlockSynchronizerStatus
             | Information::AvailableBlockRange
+            | Information::LatestSwitchBlockHeader
             | Information::Peers
             | Information::ConsensusStatus
             | Information::ConsensusValidatorChanges
@@ -166,7 +168,10 @@ fn handle_information_response(
             let res = parse_response::<ConsensusStatus>(response.response())?;
             debug_print_option(res);
         }
-        InformationRequestTag::LatestSwitchBlockHeader => todo!(),
+        InformationRequestTag::LatestSwitchBlockHeader => {
+            let res = parse_response::<BlockHeader>(response.response())?;
+            debug_print_option(res);
+        }
         InformationRequestTag::Reward => todo!(),
     }
     Ok(())
