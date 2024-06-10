@@ -153,6 +153,7 @@ fn handle_information_response(
         InformationRequestTag::NextUpgrade => todo!(),
         InformationRequestTag::ConsensusStatus => todo!(),
         InformationRequestTag::LatestSwitchBlockHeader => todo!(),
+        InformationRequestTag::Reward => todo!(),
     }
     Ok(())
 }
