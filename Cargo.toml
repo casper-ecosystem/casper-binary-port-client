@@ -14,7 +14,7 @@ casper-types = { version = "5.0.0", path = "../casper-node/types", features = [
     "std",
     "std-fs-io",
 ] }
-clap = { version = "4.5.3", features = ["derive"] }
+clap = { version = "4.5.3", features = ["derive", "wrap_help"] }
 thiserror = "1.0.58"
 tokio = { version = "1.36.0", features = ["macros", "rt-multi-thread", "net"] }
 bytes = "1.5.0"
