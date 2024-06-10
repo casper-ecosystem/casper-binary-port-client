@@ -1,12 +1,14 @@
 use casper_binary_port::{
     BinaryRequest, BinaryResponse, BinaryResponseAndRequest, ConsensusStatus,
-    ConsensusValidatorChanges, InformationRequest, InformationRequestTag, LastProgress,
-    NetworkName, NodeStatus, PayloadEntity, ReactorStateName, TransactionWithExecutionInfo, Uptime,
+    ConsensusValidatorChanges, EraIdentifier, InformationRequest, InformationRequestTag,
+    LastProgress, NetworkName, NodeStatus, PayloadEntity, ReactorStateName, RewardResponse,
+    TransactionWithExecutionInfo, Uptime,
 };
 use casper_types::{
     bytesrepr::{self, FromBytes, ToBytes},
-    AvailableBlockRange, BlockHash, BlockHeader, BlockIdentifier, BlockSynchronizerStatus,
-    ChainspecRawBytes, DeployHash, NextUpgrade, Peers, SignedBlock, TransactionHash,
+    AsymmetricType, AvailableBlockRange, BlockHash, BlockHeader, BlockIdentifier,
+    BlockSynchronizerStatus, ChainspecRawBytes, DeployHash, Digest, EraId, NextUpgrade, Peers,
+    PublicKey, SignedBlock, TransactionHash,
 };
 
 use crate::{
@@ -34,6 +36,7 @@ impl Information {
             Information::NextUpgrade => InformationRequestTag::NextUpgrade,
             Information::ConsensusStatus => InformationRequestTag::ConsensusStatus,
             Information::LatestSwitchBlockHeader => InformationRequestTag::LatestSwitchBlockHeader,
+            Information::Reward { .. } => InformationRequestTag::Reward,
         }
     }
 
@@ -59,7 +62,7 @@ impl Information {
                 with_finalized_approvals,
                 legacy,
             } => {
-                let digest = casper_types::Digest::from_hex(hash).expect("failed to parse hash");
+                let digest = Digest::from_hex(hash).expect("failed to parse hash");
                 let hash = if *legacy {
                     TransactionHash::Deploy(DeployHash::from(digest))
                 } else {
@@ -72,6 +75,65 @@ impl Information {
                     .expect("should serialize");
 
                 hash.into_iter().chain(approvals).collect()
+            }
+            Information::Reward {
+                era,
+                hash,
+                height,
+                validator_key,
+                validator_key_file,
+                delegator_key,
+                delegator_key_file,
+            } => {
+                let era_identifier = match (era, hash, height) {
+                    (Some(era), None, None) => Some(EraIdentifier::Era(EraId::new(*era))),
+                    (None, Some(hash), None) => {
+                        let digest = Digest::from_hex(hash).expect("failed to parse hash");
+                        Some(EraIdentifier::Block(BlockIdentifier::Hash(BlockHash::new(
+                            digest,
+                        ))))
+                    }
+                    (None, None, Some(height)) => {
+                        Some(EraIdentifier::Block(BlockIdentifier::Height(*height)))
+                    }
+                    (None, None, None) => None,
+                    _ => unreachable!(
+                        "era identifier should be either empty or one of era, hash, or height"
+                    ),
+                };
+
+                let validator = match (validator_key, validator_key_file) {
+                    (None, Some(key_file)) => Box::new(
+                        PublicKey::from_file(key_file).expect("failed to read validator key file"),
+                    ),
+                    (Some(key), None) => {
+                        Box::new(PublicKey::from_hex(key).expect("failed to parse validator"))
+                    }
+                    (None, None) => panic!("validator key is required"),
+                    (Some(_), Some(_)) => {
+                        panic!("only one of validator key or validator key file is allowed")
+                    }
+                };
+
+                let delegator = match (delegator_key, delegator_key_file) {
+                    (None, Some(key_file)) => Some(Box::new(
+                        PublicKey::from_file(key_file).expect("failed to read delegator key file"),
+                    )),
+                    (Some(key), None) => Some(Box::new(
+                        PublicKey::from_hex(key).expect("failed to parse delegator"),
+                    )),
+                    (None, None) => None,
+                    (Some(_), Some(_)) => {
+                        panic!("only one of delegator key or delegator key file is allowed")
+                    }
+                };
+
+                let key = InformationRequest::Reward {
+                    era_identifier,
+                    validator,
+                    delegator,
+                };
+                key.to_bytes().expect("should serialize")
             }
         }
     }
@@ -172,7 +234,10 @@ fn handle_information_response(
             let res = parse_response::<BlockHeader>(response.response())?;
             debug_print_option(res);
         }
-        InformationRequestTag::Reward => todo!(),
+        InformationRequestTag::Reward => {
+            let res = parse_response::<RewardResponse>(response.response())?;
+            debug_print_option(res);
+        }
     }
     Ok(())
 }

@@ -1,8 +1,13 @@
-use clap::{Parser, Subcommand};
+use clap::{ArgGroup, Parser, Subcommand};
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum Information {
     /// Retrieve block header by height or hash.
+    #[command(group(
+        ArgGroup::new("block_id")
+            .required(true)
+            .args(&["hash", "height"])
+    ))]
     BlockHeader {
         #[clap(long, conflicts_with = "height")]
         hash: Option<String>,
@@ -10,6 +15,11 @@ pub(crate) enum Information {
         height: Option<u64>,
     },
     /// Retrieve block with signatures by height or hash.
+    #[command(group(
+        ArgGroup::new("block_id")
+            .required(true)
+            .args(&["hash", "height"])
+    ))]
     SignedBlock {
         #[clap(long, conflicts_with = "height")]
         hash: Option<String>,
@@ -54,6 +64,28 @@ pub(crate) enum Information {
     NodeStatus,
     /// Latest switch block header request.
     LatestSwitchBlockHeader,
+    /// Reward for a validator or a delegator in a specific era identified by either era number or block hash or block height.
+    #[command(group(
+        ArgGroup::new("validator_data")
+            .required(true)
+            .args(&["validator_key", "validator_key_file"])
+    ))]
+    Reward {
+        #[clap(long, short, conflicts_with = "hash", conflicts_with = "height")]
+        era: Option<u64>,
+        #[clap(long, conflicts_with = "height", conflicts_with = "era")]
+        hash: Option<String>,
+        #[clap(long, conflicts_with = "hash", conflicts_with = "era")]
+        height: Option<u64>,
+        #[clap(long, conflicts_with = "validator_key_file")]
+        validator_key: Option<String>,
+        #[clap(long, short, conflicts_with = "validator_key")]
+        validator_key_file: Option<String>,
+        #[clap(long, conflicts_with = "delegator_key_file")]
+        delegator_key: Option<String>,
+        #[clap(long, short, conflicts_with = "delegator_key")]
+        delegator_key_file: Option<String>,
+    },
 }
 
 #[derive(Debug, Subcommand)]

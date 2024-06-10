@@ -12,6 +12,7 @@ casper-types = { version = "5.0.0", path = "../casper-node/types", features = [
     "datasize",
     "json-schema",
     "std",
+    "std-fs-io",
 ] }
 clap = { version = "4.5.3", features = ["derive"] }
 thiserror = "1.0.58"
