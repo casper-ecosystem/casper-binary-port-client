@@ -90,7 +90,7 @@ pub(crate) enum Information {
 
 #[derive(Debug, Subcommand)]
 pub(super) enum Commands {
-    /// Send information request with a given ID and key.
+    /// Send information request of a given kind.
     #[clap(subcommand)]
     Information(Information),
     /// Send record request with a given ID and key.
