@@ -46,6 +46,8 @@ pub(crate) enum Information {
     AvailableBlockRange,
     /// Next upgrade request.
     NextUpgrade,
+    /// Consensus status request.
+    ConsensusStatus,
     /// Read node status.
     NodeStatus,
     /// Retrieve raw chainspec bytes.

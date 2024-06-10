@@ -1,7 +1,7 @@
 use casper_binary_port::{
-    BinaryRequest, BinaryResponse, BinaryResponseAndRequest, ConsensusValidatorChanges,
-    InformationRequest, InformationRequestTag, LastProgress, NetworkName, NodeStatus,
-    PayloadEntity, ReactorStateName, TransactionWithExecutionInfo, Uptime,
+    BinaryRequest, BinaryResponse, BinaryResponseAndRequest, ConsensusStatus,
+    ConsensusValidatorChanges, InformationRequest, InformationRequestTag, LastProgress,
+    NetworkName, NodeStatus, PayloadEntity, ReactorStateName, TransactionWithExecutionInfo, Uptime,
 };
 use casper_types::{
     bytesrepr::{self, FromBytes, ToBytes},
@@ -32,6 +32,7 @@ impl Information {
             Information::BlockSynchronizerStatus => InformationRequestTag::BlockSynchronizerStatus,
             Information::AvailableBlockRange => InformationRequestTag::AvailableBlockRange,
             Information::NextUpgrade => InformationRequestTag::NextUpgrade,
+            Information::ConsensusStatus => InformationRequestTag::ConsensusStatus,
         }
     }
 
@@ -43,6 +44,7 @@ impl Information {
             | Information::BlockSynchronizerStatus
             | Information::AvailableBlockRange
             | Information::Peers
+            | Information::ConsensusStatus
             | Information::ConsensusValidatorChanges
             | Information::NetworkName
             | Information::ReactorState
@@ -104,7 +106,6 @@ fn handle_information_response(
     response: &BinaryResponseAndRequest,
 ) -> Result<(), Error> {
     match tag {
-        // TODO: Macro?
         InformationRequestTag::NodeStatus => {
             let res = parse_response::<NodeStatus>(response.response())?;
             debug_print_option(res);
@@ -161,7 +162,10 @@ fn handle_information_response(
             let res = parse_response::<NextUpgrade>(response.response())?;
             debug_print_option(res);
         }
-        InformationRequestTag::ConsensusStatus => todo!(),
+        InformationRequestTag::ConsensusStatus => {
+            let res = parse_response::<ConsensusStatus>(response.response())?;
+            debug_print_option(res);
+        }
         InformationRequestTag::LatestSwitchBlockHeader => todo!(),
         InformationRequestTag::Reward => todo!(),
     }
