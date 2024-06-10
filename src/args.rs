@@ -42,6 +42,8 @@ pub(crate) enum Information {
     ConsensusValidatorChanges,
     /// Returns status of the BlockSynchronizer.
     BlockSynchronizerStatus,
+    /// Available block range request.
+    AvailableBlockRange,
     /// Read node status.
     NodeStatus,
     /// Retrieve raw chainspec bytes.
