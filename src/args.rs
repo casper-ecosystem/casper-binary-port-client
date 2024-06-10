@@ -44,6 +44,8 @@ pub(crate) enum Information {
     BlockSynchronizerStatus,
     /// Available block range request.
     AvailableBlockRange,
+    /// Next upgrade request.
+    NextUpgrade,
     /// Read node status.
     NodeStatus,
     /// Retrieve raw chainspec bytes.
