@@ -5,7 +5,7 @@ use casper_binary_port::{
 use casper_types::{bytesrepr::FromBytes, Digest, GlobalStateIdentifier, Key};
 use clap::Subcommand;
 
-use crate::{communication::send_request, error::Error, utils::print_hex_payload};
+use crate::{communication::send_request, error::Error, utils::EMPTY_STR};
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum State {
@@ -77,9 +77,14 @@ pub(super) async fn handle_state_request(req: State) -> Result<(), Error> {
 }
 
 fn handle_state_response(response: &BinaryResponseAndRequest) {
+    let Some(tag) = response.response().returned_data_type_tag() else {
+        println!("{EMPTY_STR}");
+        return;
+    };
+
     assert_eq!(
-        Some(PayloadType::GlobalStateQueryResult as u8),
-        response.response().returned_data_type_tag(),
+        PayloadType::GlobalStateQueryResult as u8,
+        tag,
         "should get GlobalStateQueryResult"
     );
     let (result, remainder): (GlobalStateQueryResult, _) =
