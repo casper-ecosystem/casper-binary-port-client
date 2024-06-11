@@ -1,7 +1,8 @@
 use casper_binary_port::{
-    BinaryRequest, BinaryResponseAndRequest, GetRequest, GlobalStateRequest, PayloadType,
+    BinaryRequest, BinaryResponseAndRequest, GetRequest, GlobalStateQueryResult,
+    GlobalStateRequest, PayloadType,
 };
-use casper_types::{Digest, GlobalStateIdentifier, Key};
+use casper_types::{bytesrepr::FromBytes, Digest, GlobalStateIdentifier, Key};
 use clap::Subcommand;
 
 use crate::{communication::send_request, error::Error, utils::print_hex_payload};
@@ -81,5 +82,14 @@ fn handle_state_response(response: &BinaryResponseAndRequest) {
         response.response().returned_data_type_tag(),
         "should get GlobalStateQueryResult"
     );
-    print_hex_payload(response.response().payload());
+    let (result, remainder): (GlobalStateQueryResult, _) =
+        GlobalStateQueryResult::from_bytes(&response.response().payload())
+            .expect("should deserialize");
+    assert!(remainder.is_empty(), "should have no remaining bytes");
+
+    let (value, proof) = result.into_inner();
+    println!("Value:");
+    println!("{value:#?}");
+    println!("Proof:");
+    println!("{proof:#?}");
 }

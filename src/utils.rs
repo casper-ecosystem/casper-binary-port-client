@@ -17,7 +17,8 @@ pub(crate) fn print_hex_payload(payload: &[u8]) {
     if len > 0 {
         let hex = hex::encode(payload);
         // TODO: Print length in verbose mode only.
-        println!("{len} bytes: {hex}");
+        println!("{len} bytes:");
+        println!("{hex}")
     } else {
         println!("{EMPTY_STR}");
     }
