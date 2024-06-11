@@ -21,4 +21,6 @@ pub(crate) enum Error {
     Digest(#[from] DigestError),
     #[error("failed to parse key: {0}")]
     KeyFromStr(KeyFromStrError),
+    #[error("invalid key tag: {0}")]
+    InvalidKeyTag(u8),
 }
