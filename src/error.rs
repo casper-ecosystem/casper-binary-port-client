@@ -1,5 +1,5 @@
 use casper_binary_port::UnknownRecordId;
-use casper_types::bytesrepr;
+use casper_types::{bytesrepr, DigestError, KeyFromStrError};
 use hex::FromHexError;
 use thiserror::Error;
 
@@ -17,4 +17,8 @@ pub(crate) enum Error {
     Record(UnknownRecordId),
     #[error(transparent)]
     FromHex(#[from] FromHexError),
+    #[error(transparent)]
+    Digest(#[from] DigestError),
+    #[error("failed to parse key: {0}")]
+    KeyFromStr(KeyFromStrError),
 }

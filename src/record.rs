@@ -1,6 +1,10 @@
 use casper_binary_port::{BinaryRequest, BinaryResponseAndRequest, GetRequest, RecordId};
 
-use crate::{communication::send_request, error::Error, utils::EMPTY_STR};
+use crate::{
+    communication::send_request,
+    error::Error,
+    utils::{print_hex_payload, EMPTY_STR},
+};
 
 pub(super) async fn handle_record_request(record_id: u16, key: &str) -> Result<(), Error> {
     let _: RecordId = record_id.try_into().map_err(Error::Record)?;
@@ -14,14 +18,7 @@ pub(super) async fn handle_record_request(record_id: u16, key: &str) -> Result<(
 }
 
 fn handle_record_response(response: &BinaryResponseAndRequest) {
-    let len = response.response().payload().len();
-    if len > 0 {
-        let hex = hex::encode(response.response().payload());
-        // TODO: Print length in verbose mode only.
-        println!("{len} bytes: {hex}");
-    } else {
-        println!("{EMPTY_STR}");
-    }
+    print_hex_payload(response.response().payload())
 }
 
 fn make_record_get_request(tag: u16, key: Vec<u8>) -> Result<BinaryRequest, Error> {

@@ -11,3 +11,14 @@ pub(crate) fn debug_print_option<T: fmt::Debug>(opt: Option<T>) {
         None => println!("{EMPTY_STR}"),
     }
 }
+
+pub(crate) fn print_hex_payload(payload: &[u8]) {
+    let len = payload.len();
+    if len > 0 {
+        let hex = hex::encode(payload);
+        // TODO: Print length in verbose mode only.
+        println!("{len} bytes: {hex}");
+    } else {
+        println!("{EMPTY_STR}");
+    }
+}

@@ -4,12 +4,14 @@ use args::Commands;
 use clap::Parser;
 use information::handle_information_request;
 use record::handle_record_request;
+use state::handle_state_request;
 
 mod args;
 mod communication;
 mod error;
 mod information;
 mod record;
+mod state;
 mod utils;
 
 #[tokio::main(flavor = "current_thread")]
@@ -19,6 +21,7 @@ async fn main() -> ExitCode {
     let result = match args.commands {
         Commands::Information(req) => handle_information_request(req).await,
         Commands::Record { id, key } => handle_record_request(id, &key).await,
+        Commands::State(req) => handle_state_request(req).await,
     };
 
     if let Err(err) = result {
