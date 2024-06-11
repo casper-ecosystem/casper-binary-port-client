@@ -9,6 +9,7 @@ use crate::{communication::send_request, error::Error, utils::EMPTY_STR};
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum State {
+    /// Gets an item from the global state.
     Item {
         #[clap(long, conflicts_with = "block_hash", conflicts_with = "block_height")]
         state_root_hash: Option<String>,
@@ -29,6 +30,10 @@ pub(crate) enum State {
         #[clap(long, short)]
         path: Option<String>,
     },
+    /// Get all items under the given key tag.
+    #[command(
+        after_help = "Please refer to `enum KeyTag` from the casper-node repository for valid key tags"
+    )]
     AllItems {
         #[clap(long, conflicts_with = "block_hash", conflicts_with = "block_height")]
         state_root_hash: Option<String>,
