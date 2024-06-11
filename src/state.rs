@@ -1,5 +1,5 @@
 use casper_binary_port::{
-    BinaryRequest, BinaryResponseAndRequest, GetRequest, GlobalStateQueryResult,
+    BinaryRequest, BinaryResponseAndRequest, GetRequest, GetTrieFullResult, GlobalStateQueryResult,
     GlobalStateRequest, PayloadType,
 };
 use casper_types::{bytesrepr::FromBytes, Digest, GlobalStateIdentifier, Key, KeyTag, StoredValue};
@@ -51,6 +51,11 @@ pub(crate) enum State {
         block_height: Option<u64>,
         #[clap(long, short)]
         key_tag: u8,
+    },
+    /// Get a trie by its Digest.
+    Trie {
+        #[clap(long, short)]
+        digest: String,
     },
 }
 
@@ -122,6 +127,10 @@ impl TryFrom<State> for GlobalStateRequest {
                     key_tag,
                 })
             }
+            State::Trie { digest } => {
+                let digest = Digest::from_hex(digest)?;
+                Ok(GlobalStateRequest::Trie { trie_key: digest })
+            }
         };
         global_state_request
     }
@@ -156,6 +165,14 @@ pub(super) async fn handle_state_request(req: State) -> Result<(), Error> {
 }
 
 fn handle_state_response(response: &BinaryResponseAndRequest) {
+    if !response.response().is_success() {
+        let error_code = response.response().error_code();
+        let error = casper_binary_port::ErrorCode::try_from(error_code)
+            .expect("unknown binary port error code");
+        println!("Error: {} (code={})", error, error_code);
+        return;
+    }
+
     let Some(tag) = response.response().returned_data_type_tag() else {
         println!("{EMPTY_STR}");
         return;
@@ -181,6 +198,25 @@ fn handle_state_response(response: &BinaryResponseAndRequest) {
             for (index, value) in result.into_iter().enumerate() {
                 println!("{}", index + 1);
                 println!("{value:#?}");
+            }
+        }
+        t if t == PayloadType::GetTrieFullResult as u8 => {
+            let (result, remainder): (GetTrieFullResult, _) =
+                FromBytes::from_bytes(&response.response().payload()).expect("should deserialize");
+            assert!(remainder.is_empty(), "should have no remaining bytes");
+
+            let result = result.into_inner();
+            match result {
+                Some(bytes) => {
+                    println!("Length (bytes):");
+                    println!("{}", bytes.len());
+                    println!("Bytes:");
+                    println!("{}", hex::encode(bytes));
+                }
+                None => {
+                    println!("{EMPTY_STR}");
+                    return;
+                }
             }
         }
         _ => panic!("unexpected payload type: {}", tag),
