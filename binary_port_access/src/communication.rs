@@ -1,5 +1,10 @@
-use casper_binary_port::{BinaryMessage, BinaryMessageCodec, BinaryRequest, BinaryRequestHeader, BinaryResponseAndRequest};
-use casper_types::{bytesrepr::{self, ToBytes}, ProtocolVersion};
+use casper_binary_port::{
+    BinaryMessage, BinaryMessageCodec, BinaryRequest, BinaryRequestHeader, BinaryResponseAndRequest,
+};
+use casper_types::{
+    bytesrepr::{self, ToBytes},
+    ProtocolVersion,
+};
 use futures::{SinkExt, StreamExt};
 use tokio::net::TcpStream;
 use tokio_util::codec::Framed;
@@ -9,9 +14,10 @@ use crate::Error;
 // TODO[RC]: Do not hardcode this.
 pub(crate) const SUPPORTED_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::from_parts(2, 0, 0);
 
-async fn connect_to_node() -> Result<Framed<TcpStream, BinaryMessageCodec>, Error> {
-    // TODO[RC]: Get address from command line
-    let stream = TcpStream::connect("127.0.0.1:28103").await?;
+async fn connect_to_node(
+    node_address: &str,
+) -> Result<Framed<TcpStream, BinaryMessageCodec>, Error> {
+    let stream = TcpStream::connect(node_address).await?;
     Ok(Framed::new(stream, BinaryMessageCodec::new(4_194_304)))
 }
 
@@ -25,12 +31,13 @@ fn encode_request(req: &BinaryRequest) -> Result<Vec<u8>, bytesrepr::Error> {
 
 // TODO[RC]: Into "communication" module
 pub(crate) async fn send_request(
+    node_address: &str,
     request: BinaryRequest,
 ) -> Result<BinaryResponseAndRequest, Error> {
     let payload =
         BinaryMessage::new(encode_request(&request).expect("should always serialize a request"));
 
-    let mut client = connect_to_node().await?;
+    let mut client = connect_to_node(node_address).await?;
     client.send(payload).await?;
     let maybe_response = client.next().await;
 

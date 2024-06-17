@@ -19,7 +19,7 @@ async fn main() -> ExitCode {
     let args = args::Args::parse();
 
     let result = match args.commands {
-        Commands::Information(req) => handle_information_request(req).await,
+        Commands::Information(req) => handle_information_request(&args.node_address, req).await,
         Commands::Record { id, key } => handle_record_request(id, &key).await,
         Commands::State(req) => handle_state_request(req).await,
     };

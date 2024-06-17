@@ -242,7 +242,10 @@ fn get_block_key(hash: &Option<String>, height: &Option<u64>) -> Vec<u8> {
     block_id.to_bytes().expect("should serialize")
 }
 
-pub(super) async fn handle_information_request(req: Information) -> Result<(), Error> {
+pub(super) async fn handle_information_request(
+    node_address: &str,
+    req: Information,
+) -> Result<(), Error> {
     let id = req.id();
     let response = match id {
         InformationRequestTag::BlockHeader => todo!(),
@@ -260,7 +263,7 @@ pub(super) async fn handle_information_request(req: Information) -> Result<(), E
         InformationRequestTag::ConsensusStatus => todo!(),
         InformationRequestTag::ChainspecRawBytes => todo!(),
         InformationRequestTag::NodeStatus => todo!(),
-        InformationRequestTag::LatestSwitchBlockHeader => latest_switch_block_header(),
+        InformationRequestTag::LatestSwitchBlockHeader => latest_switch_block_header(node_address),
         InformationRequestTag::Reward => todo!(),
     }
     .await?;

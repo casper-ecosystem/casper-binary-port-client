@@ -28,7 +28,9 @@ pub(super) enum Commands {
 pub(super) struct Args {
     #[clap(subcommand)]
     pub(super) commands: Commands,
-    // Currently unused.
+    // TODO[RC]: Currently unused.
     #[clap(long, short, default_value = "false")]
-    verbose: bool,
+    pub(super) verbose: bool,
+    #[clap(long, short, default_value = "false", required = true)]
+    pub(super) node_address: String,
 }

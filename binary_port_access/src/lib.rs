@@ -10,11 +10,11 @@ mod utils;
 
 pub use error::Error;
 
-pub async fn latest_switch_block_header() -> Result<Option<BlockHeader>, Error> {
+pub async fn latest_switch_block_header(node_address: &str) -> Result<Option<BlockHeader>, Error> {
     let request = information::make_information_get_request(
         InformationRequestTag::LatestSwitchBlockHeader,
         &[],
     )?;
-    let response = communication::send_request(request).await?;
+    let response = communication::send_request(node_address, request).await?;
     Ok(utils::parse_response::<BlockHeader>(response.response())?)
 }
