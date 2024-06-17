@@ -4,7 +4,9 @@ use casper_binary_port::{
     LastProgress, NetworkName, NodeStatus, PayloadEntity, ReactorStateName, RewardResponse,
     TransactionWithExecutionInfo, Uptime,
 };
-use casper_binary_port_access::latest_switch_block_header;
+use casper_binary_port_access::{
+    block_header_by_hash, block_header_by_height, latest_block_header, latest_switch_block_header,
+};
 use casper_types::{
     bytesrepr::{self, FromBytes, ToBytes},
     AsymmetricType, AvailableBlockRange, BlockHash, BlockHeader, BlockIdentifier,
@@ -18,11 +20,6 @@ use crate::{communication::send_request, error::Error, utils::print_option};
 #[derive(Debug, Subcommand)]
 pub(crate) enum Information {
     /// Retrieve block header by height or hash.
-    #[command(group(
-        ArgGroup::new("block_id")
-            .required(true)
-            .args(&["hash", "height"])
-    ))]
     BlockHeader {
         #[clap(long, conflicts_with = "height")]
         hash: Option<String>,
@@ -104,30 +101,6 @@ pub(crate) enum Information {
 }
 
 impl Information {
-    fn id(&self) -> InformationRequestTag {
-        match self {
-            Information::NodeStatus => InformationRequestTag::NodeStatus,
-            Information::BlockHeader { .. } => InformationRequestTag::BlockHeader,
-            Information::ChainspecRawBytes => InformationRequestTag::ChainspecRawBytes,
-            Information::Uptime => InformationRequestTag::Uptime,
-            Information::SignedBlock { .. } => InformationRequestTag::SignedBlock,
-            Information::Transaction { .. } => InformationRequestTag::Transaction,
-            Information::Peers => InformationRequestTag::Peers,
-            Information::LastProgress => InformationRequestTag::LastProgress,
-            Information::ReactorState => InformationRequestTag::ReactorState,
-            Information::NetworkName => InformationRequestTag::NetworkName,
-            Information::ConsensusValidatorChanges => {
-                InformationRequestTag::ConsensusValidatorChanges
-            }
-            Information::BlockSynchronizerStatus => InformationRequestTag::BlockSynchronizerStatus,
-            Information::AvailableBlockRange => InformationRequestTag::AvailableBlockRange,
-            Information::NextUpgrade => InformationRequestTag::NextUpgrade,
-            Information::ConsensusStatus => InformationRequestTag::ConsensusStatus,
-            Information::LatestSwitchBlockHeader => InformationRequestTag::LatestSwitchBlockHeader,
-            Information::Reward { .. } => InformationRequestTag::Reward,
-        }
-    }
-
     fn key(&self) -> Vec<u8> {
         match self {
             Information::BlockHeader { hash, height }
@@ -246,35 +219,47 @@ pub(super) async fn handle_information_request(
     node_address: &str,
     req: Information,
 ) -> Result<(), Error> {
-    let id = req.id();
-    let response = match id {
-        InformationRequestTag::BlockHeader => todo!(),
-        InformationRequestTag::SignedBlock => todo!(),
-        InformationRequestTag::Transaction => todo!(),
-        InformationRequestTag::Peers => todo!(),
-        InformationRequestTag::Uptime => todo!(),
-        InformationRequestTag::LastProgress => todo!(),
-        InformationRequestTag::ReactorState => todo!(),
-        InformationRequestTag::NetworkName => todo!(),
-        InformationRequestTag::ConsensusValidatorChanges => todo!(),
-        InformationRequestTag::BlockSynchronizerStatus => todo!(),
-        InformationRequestTag::AvailableBlockRange => todo!(),
-        InformationRequestTag::NextUpgrade => todo!(),
-        InformationRequestTag::ConsensusStatus => todo!(),
-        InformationRequestTag::ChainspecRawBytes => todo!(),
-        InformationRequestTag::NodeStatus => todo!(),
-        InformationRequestTag::LatestSwitchBlockHeader => latest_switch_block_header(node_address),
-        InformationRequestTag::Reward => todo!(),
-    }
-    .await?;
+    let response = match req {
+        Information::BlockHeader { hash, height } => match (hash, height) {
+            (None, None) => latest_block_header(node_address).await?,
+            (None, Some(height)) => block_header_by_height(node_address, height).await?,
+            (Some(hash), None) => {
+                let digest = casper_types::Digest::from_hex(hash)?;
+                block_header_by_hash(node_address, BlockHash::new(digest)).await?
+            }
+            (Some(_), Some(_)) => return Err(Error::EitherHashOrHeightRequired),
+        },
+        Information::SignedBlock { hash, height } => todo!(),
+        Information::Transaction {
+            hash,
+            with_finalized_approvals,
+            legacy,
+        } => todo!(),
+        Information::Peers => todo!(),
+        Information::Uptime => todo!(),
+        Information::LastProgress => todo!(),
+        Information::ReactorState => todo!(),
+        Information::NetworkName => todo!(),
+        Information::ConsensusValidatorChanges => todo!(),
+        Information::BlockSynchronizerStatus => todo!(),
+        Information::AvailableBlockRange => todo!(),
+        Information::NextUpgrade => todo!(),
+        Information::ConsensusStatus => todo!(),
+        Information::ChainspecRawBytes => todo!(),
+        Information::NodeStatus => todo!(),
+        Information::LatestSwitchBlockHeader => latest_switch_block_header(node_address).await?,
+        Information::Reward {
+            era,
+            hash,
+            height,
+            validator_key,
+            validator_key_file,
+            delegator_key,
+            delegator_key_file,
+        } => todo!(),
+    };
 
     print_option(response);
-
-    // let key = req.key();
-
-    // let request = make_information_get_request(id, &key)?;
-    // let response = send_request(request).await?;
-    // handle_information_response(id, &response)?;
 
     Ok(())
 }

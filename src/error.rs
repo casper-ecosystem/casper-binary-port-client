@@ -25,4 +25,6 @@ pub(crate) enum Error {
     InvalidKeyTag(u8),
     #[error(transparent)]
     BinaryPortAccess(#[from] casper_binary_port_access::Error),
+    #[error("need only one of hash or height")]
+    EitherHashOrHeightRequired,
 }
