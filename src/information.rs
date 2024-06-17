@@ -4,6 +4,7 @@ use casper_binary_port::{
     LastProgress, NetworkName, NodeStatus, PayloadEntity, ReactorStateName, RewardResponse,
     TransactionWithExecutionInfo, Uptime,
 };
+use casper_binary_port_access::latest_switch_block_header;
 use casper_types::{
     bytesrepr::{self, FromBytes, ToBytes},
     AsymmetricType, AvailableBlockRange, BlockHash, BlockHeader, BlockIdentifier,
@@ -12,7 +13,7 @@ use casper_types::{
 };
 use clap::{command, ArgGroup, Subcommand};
 
-use crate::{communication::send_request, error::Error, utils::debug_print_option};
+use crate::{communication::send_request, error::Error, utils::print_option};
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum Information {
@@ -243,11 +244,34 @@ fn get_block_key(hash: &Option<String>, height: &Option<u64>) -> Vec<u8> {
 
 pub(super) async fn handle_information_request(req: Information) -> Result<(), Error> {
     let id = req.id();
-    let key = req.key();
+    let response = match id {
+        InformationRequestTag::BlockHeader => todo!(),
+        InformationRequestTag::SignedBlock => todo!(),
+        InformationRequestTag::Transaction => todo!(),
+        InformationRequestTag::Peers => todo!(),
+        InformationRequestTag::Uptime => todo!(),
+        InformationRequestTag::LastProgress => todo!(),
+        InformationRequestTag::ReactorState => todo!(),
+        InformationRequestTag::NetworkName => todo!(),
+        InformationRequestTag::ConsensusValidatorChanges => todo!(),
+        InformationRequestTag::BlockSynchronizerStatus => todo!(),
+        InformationRequestTag::AvailableBlockRange => todo!(),
+        InformationRequestTag::NextUpgrade => todo!(),
+        InformationRequestTag::ConsensusStatus => todo!(),
+        InformationRequestTag::ChainspecRawBytes => todo!(),
+        InformationRequestTag::NodeStatus => todo!(),
+        InformationRequestTag::LatestSwitchBlockHeader => latest_switch_block_header(),
+        InformationRequestTag::Reward => todo!(),
+    }
+    .await?;
 
-    let request = make_information_get_request(id, &key)?;
-    let response = send_request(request).await?;
-    handle_information_response(id, &response)?;
+    print_option(response);
+
+    // let key = req.key();
+
+    // let request = make_information_get_request(id, &key)?;
+    // let response = send_request(request).await?;
+    // handle_information_response(id, &response)?;
 
     Ok(())
 }
@@ -259,71 +283,71 @@ fn handle_information_response(
     match tag {
         InformationRequestTag::NodeStatus => {
             let res = parse_response::<NodeStatus>(response.response())?;
-            debug_print_option(res);
+            print_option(res);
         }
         InformationRequestTag::BlockHeader => {
             let res = parse_response::<BlockHeader>(response.response())?;
-            debug_print_option(res);
+            print_option(res);
         }
         InformationRequestTag::ChainspecRawBytes => {
             let res = parse_response::<ChainspecRawBytes>(response.response())?;
-            debug_print_option(res);
+            print_option(res);
         }
         InformationRequestTag::Uptime => {
             let res = parse_response::<Uptime>(response.response())?;
-            debug_print_option(res);
+            print_option(res);
         }
         InformationRequestTag::SignedBlock => {
             let res = parse_response::<SignedBlock>(response.response())?;
-            debug_print_option(res);
+            print_option(res);
         }
         InformationRequestTag::Transaction => {
             let res = parse_response::<TransactionWithExecutionInfo>(response.response())?;
-            debug_print_option(res);
+            print_option(res);
         }
         InformationRequestTag::Peers => {
             let res = parse_response::<Peers>(response.response())?;
-            debug_print_option(res);
+            print_option(res);
         }
         InformationRequestTag::LastProgress => {
             let res = parse_response::<LastProgress>(response.response())?;
-            debug_print_option(res);
+            print_option(res);
         }
         InformationRequestTag::ReactorState => {
             let res = parse_response::<ReactorStateName>(response.response())?;
-            debug_print_option(res);
+            print_option(res);
         }
         InformationRequestTag::NetworkName => {
             let res = parse_response::<NetworkName>(response.response())?;
-            debug_print_option(res);
+            print_option(res);
         }
         InformationRequestTag::ConsensusValidatorChanges => {
             let res = parse_response::<ConsensusValidatorChanges>(response.response())?;
-            debug_print_option(res);
+            print_option(res);
         }
         InformationRequestTag::BlockSynchronizerStatus => {
             let res = parse_response::<BlockSynchronizerStatus>(response.response())?;
-            debug_print_option(res);
+            print_option(res);
         }
         InformationRequestTag::AvailableBlockRange => {
             let res = parse_response::<AvailableBlockRange>(response.response())?;
-            debug_print_option(res);
+            print_option(res);
         }
         InformationRequestTag::NextUpgrade => {
             let res = parse_response::<NextUpgrade>(response.response())?;
-            debug_print_option(res);
+            print_option(res);
         }
         InformationRequestTag::ConsensusStatus => {
             let res = parse_response::<ConsensusStatus>(response.response())?;
-            debug_print_option(res);
+            print_option(res);
         }
         InformationRequestTag::LatestSwitchBlockHeader => {
             let res = parse_response::<BlockHeader>(response.response())?;
-            debug_print_option(res);
+            print_option(res);
         }
         InformationRequestTag::Reward => {
             let res = parse_response::<RewardResponse>(response.response())?;
-            debug_print_option(res);
+            print_option(res);
         }
     }
     Ok(())
@@ -344,6 +368,7 @@ fn parse_response<A: FromBytes + PayloadEntity>(
     }
 }
 
+// TODO[RC]: Not needed here
 fn make_information_get_request(
     tag: InformationRequestTag,
     key: &[u8],

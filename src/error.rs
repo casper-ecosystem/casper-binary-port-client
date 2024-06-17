@@ -23,4 +23,6 @@ pub(crate) enum Error {
     KeyFromStr(KeyFromStrError),
     #[error("invalid key tag: {0}")]
     InvalidKeyTag(u8),
+    #[error(transparent)]
+    BinaryPortAccess(#[from] casper_binary_port_access::Error),
 }

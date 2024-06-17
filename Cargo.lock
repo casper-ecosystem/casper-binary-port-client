@@ -196,11 +196,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "casper-binary-port-access"
+version = "0.1.0"
+dependencies = [
+ "casper-binary-port",
+ "casper-types",
+ "futures",
+ "thiserror",
+ "tokio",
+ "tokio-util",
+]
+
+[[package]]
 name = "casper-binary-port-client"
 version = "0.1.0"
 dependencies = [
  "bytes",
  "casper-binary-port",
+ "casper-binary-port-access",
  "casper-types",
  "clap",
  "futures",

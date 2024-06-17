@@ -3,9 +3,62 @@ use casper_binary_port::{
     GlobalStateRequest, PayloadType,
 };
 use casper_types::{bytesrepr::FromBytes, Digest, GlobalStateIdentifier, Key, KeyTag, StoredValue};
-use clap::Subcommand;
+use clap::{ArgGroup, Subcommand};
 
 use crate::{communication::send_request, error::Error, utils::EMPTY_STR};
+
+#[derive(Debug, Subcommand)]
+pub(crate) enum DictionaryIdentifier {
+    /// Lookup a dictionary item via an accounts named keys.
+    AccountNamedKey {
+        /// The account hash.
+        #[clap(long, short)]
+        account_hash: String,
+        /// The named key under which the dictionary seed URef is stored.
+        #[clap(long)]
+        dictionary_name: String,
+        /// The dictionary item key formatted as a string.
+        #[clap(long)]
+        dictionary_item_key: String,
+    },
+    /// Lookup a dictionary item via a contracts named keys.
+    ContractNamedKey {
+        /// The contract hash.
+        #[clap(long, short)]
+        contract_hash: String,
+        /// The named key under which the dictionary seed URef is stored.
+        #[clap(long)]
+        dictionary_name: String,
+        /// The dictionary item key formatted as a string.
+        #[clap(long)]
+        dictionary_item_key: String,
+    },
+    /// Lookup a dictionary item via an entities named keys.
+    EntityNamedKey {
+        /// The entity address.
+        #[clap(long, short)]
+        entity_addr: String,
+        /// The named key under which the dictionary seed URef is stored.
+        #[clap(long)]
+        dictionary_name: String,
+        /// The dictionary item key formatted as a string.
+        #[clap(long)]
+        dictionary_item_key: String,
+    },
+    /// Lookup a dictionary item via its seed URef.
+    URef {
+        /// The dictionary's seed URef.
+        #[clap(long, short)]
+        seed_uref: String,
+        /// The dictionary item key formatted as a string.
+        #[clap(long, short)]
+        dictionary_item_key: String,
+    },
+    DictionaryItem {
+        #[clap(long, short)]
+        dictionary_addr: String,
+    },
+}
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum State {
@@ -56,6 +109,25 @@ pub(crate) enum State {
     Trie {
         #[clap(long, short)]
         digest: String,
+    },
+    /// Get a dictionary item by its identifier.
+    DictionaryItem {
+        #[clap(long, conflicts_with = "block_hash", conflicts_with = "block_height")]
+        state_root_hash: Option<String>,
+        #[clap(
+            long,
+            conflicts_with = "block_height",
+            conflicts_with = "state_root_hash"
+        )]
+        block_hash: Option<String>,
+        #[clap(
+            long,
+            conflicts_with = "block_hash",
+            conflicts_with = "state_root_hash"
+        )]
+        block_height: Option<u64>,
+        #[clap(subcommand)]
+        dictionary_identifier: DictionaryIdentifier,
     },
 }
 
@@ -131,6 +203,12 @@ impl TryFrom<State> for GlobalStateRequest {
                 let digest = Digest::from_hex(digest)?;
                 Ok(GlobalStateRequest::Trie { trie_key: digest })
             }
+            State::DictionaryItem {
+                state_root_hash,
+                block_hash,
+                block_height,
+                dictionary_identifier,
+            } => todo!(),
         };
         global_state_request
     }

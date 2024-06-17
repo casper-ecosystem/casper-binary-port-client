@@ -1,0 +1,20 @@
+[package]
+name = "casper-binary-port-access"
+version = "0.1.0"
+edition = "2021"
+authors = ["Rafał Chabowski <rafal@casperlabs.io>"]
+description = "Library for accessing Casper binary port."
+license = "Apache-2.0"
+
+[dependencies]
+casper-binary-port = { path = "../../casper-node/binary_port" }
+casper-types = { version = "5.0.0", path = "../../casper-node/types", features = [
+    "datasize",
+    "json-schema",
+    "std",
+    "std-fs-io",
+] }
+thiserror = "1.0.58"
+tokio = { version = "1.36.0", features = ["macros", "rt-multi-thread", "net"] }
+tokio-util = { version = "0.6.4", features = ["codec"] }
+futures = "0"
