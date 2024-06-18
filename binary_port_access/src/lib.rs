@@ -8,7 +8,7 @@ use casper_binary_port::{
 };
 use casper_types::{
     bytesrepr::ToBytes, AvailableBlockRange, BlockHash, BlockHeader, BlockIdentifier,
-    BlockSynchronizerStatus, Digest, Peers, SignedBlock, TransactionHash,
+    BlockSynchronizerStatus, Digest, NextUpgrade, Peers, SignedBlock, TransactionHash,
 };
 
 mod communication;
@@ -196,4 +196,13 @@ pub async fn available_block_range(node_address: &str) -> Result<AvailableBlockR
     let available_block_range = utils::parse_response::<AvailableBlockRange>(response.response())?;
     return available_block_range
         .ok_or_else(|| Error::Response("unable to read last available block range".to_string()));
+}
+
+pub async fn next_upgrade(node_address: &str) -> Result<Option<NextUpgrade>, Error> {
+    let request =
+        information::make_information_get_request(InformationRequestTag::NextUpgrade, &[])?;
+    let response = communication::send_request(node_address, request).await?;
+    Ok(utils::parse_response::<NextUpgrade>(
+        response.response(),
+    )?)
 }
