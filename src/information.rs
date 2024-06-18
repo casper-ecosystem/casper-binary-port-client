@@ -5,7 +5,8 @@ use casper_binary_port::{
     TransactionWithExecutionInfo, Uptime,
 };
 use casper_binary_port_access::{
-    block_header_by_hash, block_header_by_height, latest_block_header, latest_switch_block_header,
+    block_header_by_hash, block_header_by_height, latest_block_header, latest_signed_block,
+    latest_switch_block_header, signed_block_by_hash, signed_block_by_height,
 };
 use casper_types::{
     bytesrepr::{self, FromBytes, ToBytes},
@@ -27,11 +28,6 @@ pub(crate) enum Information {
         height: Option<u64>,
     },
     /// Retrieve block with signatures by height or hash.
-    #[command(group(
-        ArgGroup::new("block_id")
-            .required(true)
-            .args(&["hash", "height"])
-    ))]
     SignedBlock {
         #[clap(long, conflicts_with = "height")]
         hash: Option<String>,
@@ -219,17 +215,29 @@ pub(super) async fn handle_information_request(
     node_address: &str,
     req: Information,
 ) -> Result<(), Error> {
-    let response = match req {
+    match req {
         Information::BlockHeader { hash, height } => match (hash, height) {
-            (None, None) => latest_block_header(node_address).await?,
-            (None, Some(height)) => block_header_by_height(node_address, height).await?,
+            (None, None) => print_option(latest_block_header(node_address).await?),
+            (None, Some(height)) => {
+                print_option(block_header_by_height(node_address, height).await?)
+            }
             (Some(hash), None) => {
                 let digest = casper_types::Digest::from_hex(hash)?;
-                block_header_by_hash(node_address, BlockHash::new(digest)).await?
+                print_option(block_header_by_hash(node_address, BlockHash::new(digest)).await?);
             }
             (Some(_), Some(_)) => return Err(Error::EitherHashOrHeightRequired),
         },
-        Information::SignedBlock { hash, height } => todo!(),
+        Information::SignedBlock { hash, height } => match (hash, height) {
+            (None, None) => print_option(latest_signed_block(node_address).await?),
+            (None, Some(height)) => {
+                print_option(signed_block_by_height(node_address, height).await?)
+            }
+            (Some(hash), None) => {
+                let digest = casper_types::Digest::from_hex(hash)?;
+                print_option(signed_block_by_hash(node_address, BlockHash::new(digest)).await?);
+            }
+            (Some(_), Some(_)) => return Err(Error::EitherHashOrHeightRequired),
+        },
         Information::Transaction {
             hash,
             with_finalized_approvals,
@@ -247,7 +255,9 @@ pub(super) async fn handle_information_request(
         Information::ConsensusStatus => todo!(),
         Information::ChainspecRawBytes => todo!(),
         Information::NodeStatus => todo!(),
-        Information::LatestSwitchBlockHeader => latest_switch_block_header(node_address).await?,
+        Information::LatestSwitchBlockHeader => {
+            print_option(latest_switch_block_header(node_address).await?)
+        }
         Information::Reward {
             era,
             hash,
@@ -258,8 +268,6 @@ pub(super) async fn handle_information_request(
             delegator_key_file,
         } => todo!(),
     };
-
-    print_option(response);
 
     Ok(())
 }
