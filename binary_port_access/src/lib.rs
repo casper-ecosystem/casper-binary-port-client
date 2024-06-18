@@ -3,13 +3,14 @@ use std::io::Read;
 use thiserror::Error;
 
 use casper_binary_port::{
-    ConsensusStatus, ConsensusValidatorChanges, InformationRequestTag, LastProgress, NetworkName,
-    NodeStatus, ReactorStateName, TransactionWithExecutionInfo, Uptime,
+    ConsensusStatus, ConsensusValidatorChanges, EraIdentifier, InformationRequest,
+    InformationRequestTag, LastProgress, NetworkName, NodeStatus, ReactorStateName, RewardResponse,
+    TransactionWithExecutionInfo, Uptime,
 };
 use casper_types::{
     bytesrepr::ToBytes, AvailableBlockRange, BlockHash, BlockHeader, BlockIdentifier,
-    BlockSynchronizerStatus, ChainspecRawBytes, Digest, NextUpgrade, Peers, SignedBlock,
-    TransactionHash,
+    BlockSynchronizerStatus, ChainspecRawBytes, Digest, EraId, NextUpgrade, Peers, PublicKey,
+    SignedBlock, TransactionHash,
 };
 
 mod communication;
@@ -231,4 +232,107 @@ pub async fn node_status(node_address: &str) -> Result<NodeStatus, Error> {
     let node_status = utils::parse_response::<NodeStatus>(response.response())?;
     return node_status
         .ok_or_else(|| Error::Response("unable to read last node status".to_string()));
+}
+
+async fn validator_reward_by_era_identifier(
+    node_address: &str,
+    validator_key: PublicKey,
+    era_identifier: EraIdentifier,
+) -> Result<Option<RewardResponse>, Error> {
+    let request = information::make_information_get_request(
+        InformationRequestTag::Reward,
+        InformationRequest::Reward {
+            era_identifier: Some(era_identifier),
+            validator: Box::new(validator_key),
+            delegator: None,
+        }
+        .to_bytes()?
+        .as_slice(),
+    )?;
+    let response = communication::send_request(node_address, request).await?;
+    Ok(utils::parse_response::<RewardResponse>(
+        response.response(),
+    )?)
+}
+
+pub async fn validator_reward_by_era(
+    node_address: &str,
+    validator_key: PublicKey,
+    era: EraId,
+) -> Result<Option<RewardResponse>, Error> {
+    let era_identifier = EraIdentifier::Era(era);
+    validator_reward_by_era_identifier(node_address, validator_key, era_identifier).await
+}
+
+pub async fn validator_reward_by_block_height(
+    node_address: &str,
+    validator_key: PublicKey,
+    block_height: u64,
+) -> Result<Option<RewardResponse>, Error> {
+    let era_identifier = EraIdentifier::Block(BlockIdentifier::Height(block_height));
+    validator_reward_by_era_identifier(node_address, validator_key, era_identifier).await
+}
+
+pub async fn validator_reward_by_block_hash(
+    node_address: &str,
+    validator_key: PublicKey,
+    block_hash: BlockHash,
+) -> Result<Option<RewardResponse>, Error> {
+    let era_identifier = EraIdentifier::Block(BlockIdentifier::Hash(block_hash));
+    validator_reward_by_era_identifier(node_address, validator_key, era_identifier).await
+}
+
+async fn delegator_reward_by_era_identifier(
+    node_address: &str,
+    validator_key: PublicKey,
+    delegator_key: PublicKey,
+    era_identifier: EraIdentifier,
+) -> Result<Option<RewardResponse>, Error> {
+    let request = information::make_information_get_request(
+        InformationRequestTag::Reward,
+        InformationRequest::Reward {
+            era_identifier: Some(era_identifier),
+            validator: Box::new(validator_key),
+            delegator: Some(Box::new(delegator_key)),
+        }
+        .to_bytes()?
+        .as_slice(),
+    )?;
+    let response = communication::send_request(node_address, request).await?;
+    Ok(utils::parse_response::<RewardResponse>(
+        response.response(),
+    )?)
+}
+
+pub async fn delegator_reward_by_era(
+    node_address: &str,
+    validator_key: PublicKey,
+    delegator_key: PublicKey,
+    era: EraId,
+) -> Result<Option<RewardResponse>, Error> {
+    let era_identifier = EraIdentifier::Era(era);
+    delegator_reward_by_era_identifier(node_address, validator_key, delegator_key, era_identifier)
+        .await
+}
+
+pub async fn delegator_reward_by_block_height(
+    node_address: &str,
+    validator_key: PublicKey,
+    delegator_key: PublicKey,
+    block_height: u64,
+) -> Result<Option<RewardResponse>, Error> {
+    let era_identifier = EraIdentifier::Block(BlockIdentifier::Height(block_height));
+    delegator_reward_by_era_identifier(node_address, validator_key, delegator_key, era_identifier)
+        .await
+}
+
+pub async fn delegator_reward_by_block_hash(
+    node_address: &str,
+    validator_key: PublicKey,
+    delegator_key: PublicKey,
+    block_hash: BlockHash,
+) -> Result<Option<RewardResponse>, Error> {
+    let era_identifier = EraIdentifier::Block(BlockIdentifier::Hash(block_hash));
+    delegator_reward_by_era_identifier(node_address, validator_key, delegator_key, era_identifier)
+        .await
 }

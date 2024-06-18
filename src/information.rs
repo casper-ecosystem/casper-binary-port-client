@@ -6,10 +6,12 @@ use casper_binary_port::{
 };
 use casper_binary_port_access::{
     available_block_range, block_header_by_hash, block_header_by_height, block_synchronizer_status,
-    chainspec_raw_bytes, consensus_status, consensus_validator_changes, last_progress,
-    latest_block_header, latest_signed_block, latest_switch_block_header, network_name,
-    next_upgrade, node_status, peers, reactor_state, signed_block_by_hash, signed_block_by_height,
-    transaction_by_hash, uptime,
+    chainspec_raw_bytes, consensus_status, consensus_validator_changes,
+    delegator_reward_by_block_hash, delegator_reward_by_block_height, delegator_reward_by_era,
+    last_progress, latest_block_header, latest_signed_block, latest_switch_block_header,
+    network_name, next_upgrade, node_status, peers, reactor_state, signed_block_by_hash,
+    signed_block_by_height, transaction_by_hash, uptime, validator_reward_by_block_hash,
+    validator_reward_by_block_height, validator_reward_by_era,
 };
 use casper_types::{
     bytesrepr::{self, FromBytes, ToBytes},
@@ -86,12 +88,12 @@ pub(crate) enum Information {
             .args(&["validator_key", "validator_key_file"])
     ))]
     Reward {
-        #[clap(long, short, conflicts_with = "hash", conflicts_with = "height")]
+        #[clap(long, short, conflicts_with = "block_hash", conflicts_with = "block_height")]
         era: Option<u64>,
-        #[clap(long, conflicts_with = "height", conflicts_with = "era")]
-        hash: Option<String>,
-        #[clap(long, conflicts_with = "hash", conflicts_with = "era")]
-        height: Option<u64>,
+        #[clap(long, conflicts_with = "block_height", conflicts_with = "era")]
+        block_hash: Option<String>,
+        #[clap(long, conflicts_with = "block_hash", conflicts_with = "era")]
+        block_height: Option<u64>,
         #[clap(long, conflicts_with = "validator_key_file")]
         validator_key: Option<String>,
         #[clap(long, short, conflicts_with = "validator_key")]
@@ -142,8 +144,8 @@ impl Information {
             }
             Information::Reward {
                 era,
-                hash,
-                height,
+                block_hash: hash,
+                block_height: height,
                 validator_key,
                 validator_key_file,
                 delegator_key,
@@ -288,13 +290,76 @@ pub(super) async fn handle_information_request(
         }
         Information::Reward {
             era,
-            hash,
-            height,
+            block_hash: hash,
+            block_height: height,
             validator_key,
             validator_key_file,
             delegator_key,
             delegator_key_file,
-        } => todo!(),
+        } => {
+            let validator_key = match (validator_key, validator_key_file) {
+                (None, None) => return Err(Error::ValidatorKeyRequired),
+                (None, Some(validator_key_file)) => PublicKey::from_file(validator_key_file)?,
+                (Some(validator_key), None) => PublicKey::from_hex(validator_key)?,
+                (Some(_), Some(_)) => return Err(Error::EitherKeyOrKeyFileRequired),
+            };
+
+            let delegator_key = match (delegator_key, delegator_key_file) {
+                (None, None) => None,
+                (None, Some(delegator_key_file)) => Some(PublicKey::from_file(delegator_key_file)?),
+                (Some(delegator_key), None) => Some(PublicKey::from_hex(delegator_key)?),
+                (Some(_), Some(_)) => return Err(Error::EitherKeyOrKeyFileRequired),
+            };
+
+            match (era, hash, height) {
+                (Some(era), None, None) => {
+                    print_response_opt(if let Some(delegator_key) = delegator_key {
+                        delegator_reward_by_era(
+                            node_address,
+                            validator_key,
+                            delegator_key,
+                            era.into(),
+                        )
+                        .await?
+                    } else {
+                        validator_reward_by_era(node_address, validator_key, era.into()).await?
+                    });
+                }
+                (None, Some(hash), None) => {
+                    print_response_opt(if let Some(delegator_key) = delegator_key {
+                        delegator_reward_by_block_hash(
+                            node_address,
+                            validator_key,
+                            delegator_key,
+                            Digest::from_hex(hash)?.into(),
+                        )
+                        .await?
+                    } else {
+                        validator_reward_by_block_hash(
+                            node_address,
+                            validator_key,
+                            Digest::from_hex(hash)?.into(),
+                        )
+                        .await?
+                    });
+                }
+                (None, None, Some(height)) => {
+                    print_response_opt(if let Some(delegator_key) = delegator_key {
+                        delegator_reward_by_block_height(
+                            node_address,
+                            validator_key,
+                            delegator_key,
+                            height,
+                        )
+                        .await?
+                    } else {
+                        validator_reward_by_block_height(node_address, validator_key, height)
+                            .await?
+                    });
+                }
+                _ => return Err(Error::InvalidEraIdentifier),
+            };
+        }
     };
 
     Ok(())

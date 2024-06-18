@@ -1,5 +1,5 @@
 use casper_binary_port::UnknownRecordId;
-use casper_types::{bytesrepr, DigestError, KeyFromStrError};
+use casper_types::{bytesrepr, DigestError, ErrorExt, KeyFromStrError};
 use hex::FromHexError;
 use thiserror::Error;
 
@@ -25,6 +25,16 @@ pub(crate) enum Error {
     InvalidKeyTag(u8),
     #[error(transparent)]
     BinaryPortAccess(#[from] casper_binary_port_access::Error),
-    #[error("need only one of hash or height")]
+    #[error("need either a block hash or block height")]
     EitherHashOrHeightRequired,
+    #[error("need either a key or key file")]
+    EitherKeyOrKeyFileRequired,
+    #[error(transparent)]
+    ErrorExt(#[from] ErrorExt),
+    #[error(transparent)]
+    Error(#[from] casper_types::Error),
+    #[error("validator key required")]
+    ValidatorKeyRequired,
+    #[error("need era id, block hash or block height")]
+    InvalidEraIdentifier,
 }
