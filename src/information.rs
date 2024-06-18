@@ -5,7 +5,11 @@ use casper_binary_port::{
     TransactionWithExecutionInfo, Uptime,
 };
 use casper_binary_port_access::{
-    available_block_range, block_header_by_hash, block_header_by_height, block_synchronizer_status, consensus_validator_changes, last_progress, latest_block_header, latest_signed_block, latest_switch_block_header, network_name, next_upgrade, peers, reactor_state, signed_block_by_hash, signed_block_by_height, transaction_by_hash, uptime
+    available_block_range, block_header_by_hash, block_header_by_height, block_synchronizer_status,
+    chainspec_raw_bytes, consensus_status, consensus_validator_changes, last_progress,
+    latest_block_header, latest_signed_block, latest_switch_block_header, network_name,
+    next_upgrade, peers, reactor_state, signed_block_by_hash, signed_block_by_height,
+    transaction_by_hash, uptime,
 };
 use casper_types::{
     bytesrepr::{self, FromBytes, ToBytes},
@@ -276,8 +280,8 @@ pub(super) async fn handle_information_request(
             print_response(available_block_range(node_address).await?)
         }
         Information::NextUpgrade => print_response_opt(next_upgrade(node_address).await?),
-        Information::ConsensusStatus => todo!(),
-        Information::ChainspecRawBytes => todo!(),
+        Information::ConsensusStatus => print_response(consensus_status(node_address).await?),
+        Information::ChainspecRawBytes => print_response(chainspec_raw_bytes(node_address).await?),
         Information::NodeStatus => todo!(),
         Information::LatestSwitchBlockHeader => {
             print_response_opt(latest_switch_block_header(node_address).await?)

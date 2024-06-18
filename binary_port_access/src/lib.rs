@@ -3,12 +3,13 @@ use std::io::Read;
 use thiserror::Error;
 
 use casper_binary_port::{
-    ConsensusValidatorChanges, InformationRequestTag, LastProgress, NetworkName, ReactorStateName,
-    TransactionWithExecutionInfo, Uptime,
+    ConsensusStatus, ConsensusValidatorChanges, InformationRequestTag, LastProgress, NetworkName,
+    ReactorStateName, TransactionWithExecutionInfo, Uptime,
 };
 use casper_types::{
     bytesrepr::ToBytes, AvailableBlockRange, BlockHash, BlockHeader, BlockIdentifier,
-    BlockSynchronizerStatus, Digest, NextUpgrade, Peers, SignedBlock, TransactionHash,
+    BlockSynchronizerStatus, ChainspecRawBytes, Digest, NextUpgrade, Peers, SignedBlock,
+    TransactionHash,
 };
 
 mod communication;
@@ -202,7 +203,23 @@ pub async fn next_upgrade(node_address: &str) -> Result<Option<NextUpgrade>, Err
     let request =
         information::make_information_get_request(InformationRequestTag::NextUpgrade, &[])?;
     let response = communication::send_request(node_address, request).await?;
-    Ok(utils::parse_response::<NextUpgrade>(
-        response.response(),
-    )?)
+    Ok(utils::parse_response::<NextUpgrade>(response.response())?)
+}
+
+pub async fn consensus_status(node_address: &str) -> Result<ConsensusStatus, Error> {
+    let request =
+        information::make_information_get_request(InformationRequestTag::ConsensusStatus, &[])?;
+    let response = communication::send_request(node_address, request).await?;
+    let consensus_status = utils::parse_response::<ConsensusStatus>(response.response())?;
+    return consensus_status
+        .ok_or_else(|| Error::Response("unable to read last consensus status".to_string()));
+}
+
+pub async fn chainspec_raw_bytes(node_address: &str) -> Result<ChainspecRawBytes, Error> {
+    let request =
+        information::make_information_get_request(InformationRequestTag::ChainspecRawBytes, &[])?;
+    let response = communication::send_request(node_address, request).await?;
+    let chainspec_raw_bytes = utils::parse_response::<ChainspecRawBytes>(response.response())?;
+    return chainspec_raw_bytes
+        .ok_or_else(|| Error::Response("unable to read last chainspec raw bytes".to_string()));
 }
