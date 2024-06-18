@@ -7,7 +7,7 @@ use casper_binary_port::{
 use casper_binary_port_access::{
     block_header_by_hash, block_header_by_height, latest_block_header, latest_signed_block,
     latest_switch_block_header, peers, signed_block_by_hash, signed_block_by_height,
-    transaction_by_hash,
+    transaction_by_hash, uptime,
 };
 use casper_types::{
     bytesrepr::{self, FromBytes, ToBytes},
@@ -264,7 +264,7 @@ pub(super) async fn handle_information_request(
             );
         }
         Information::Peers => print_response(peers(node_address).await?),
-        Information::Uptime => todo!(),
+        Information::Uptime => print_response(uptime(node_address).await?),
         Information::LastProgress => todo!(),
         Information::ReactorState => todo!(),
         Information::NetworkName => todo!(),

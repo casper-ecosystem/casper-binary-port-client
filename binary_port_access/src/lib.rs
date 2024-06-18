@@ -2,7 +2,7 @@ use std::io::Read;
 
 use thiserror::Error;
 
-use casper_binary_port::{InformationRequestTag, TransactionWithExecutionInfo};
+use casper_binary_port::{InformationRequestTag, TransactionWithExecutionInfo, Uptime};
 use casper_types::{
     bytesrepr::ToBytes, BlockHash, BlockHeader, BlockIdentifier, Digest, Peers, SignedBlock,
     TransactionHash,
@@ -120,4 +120,11 @@ pub async fn peers(node_address: &str) -> Result<Peers, Error> {
     let response = communication::send_request(node_address, request).await?;
     let peers = utils::parse_response::<Peers>(response.response())?;
     return peers.ok_or_else(|| Error::Response("unable to read peers".to_string()));
+}
+
+pub async fn uptime(node_address: &str) -> Result<Uptime, Error> {
+    let request = information::make_information_get_request(InformationRequestTag::Uptime, &[])?;
+    let response = communication::send_request(node_address, request).await?;
+    let peers = utils::parse_response::<Uptime>(response.response())?;
+    return peers.ok_or_else(|| Error::Response("unable to read uptime".to_string()));
 }
