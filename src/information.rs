@@ -5,7 +5,9 @@ use casper_binary_port::{
     TransactionWithExecutionInfo, Uptime,
 };
 use casper_binary_port_access::{
-    block_header_by_hash, block_header_by_height, last_progress, latest_block_header, latest_signed_block, latest_switch_block_header, network_name, peers, reactor_state, signed_block_by_hash, signed_block_by_height, transaction_by_hash, uptime
+    block_header_by_hash, block_header_by_height, consensus_validator_changes, last_progress,
+    latest_block_header, latest_signed_block, latest_switch_block_header, network_name, peers,
+    reactor_state, signed_block_by_hash, signed_block_by_height, transaction_by_hash, uptime,
 };
 use casper_types::{
     bytesrepr::{self, FromBytes, ToBytes},
@@ -266,7 +268,9 @@ pub(super) async fn handle_information_request(
         Information::LastProgress => print_response(last_progress(node_address).await?),
         Information::ReactorState => print_response(reactor_state(node_address).await?),
         Information::NetworkName => print_response(network_name(node_address).await?),
-        Information::ConsensusValidatorChanges => todo!(),
+        Information::ConsensusValidatorChanges => {
+            print_response(consensus_validator_changes(node_address).await?)
+        }
         Information::BlockSynchronizerStatus => todo!(),
         Information::AvailableBlockRange => todo!(),
         Information::NextUpgrade => todo!(),

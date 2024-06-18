@@ -3,7 +3,7 @@ use std::io::Read;
 use thiserror::Error;
 
 use casper_binary_port::{
-    InformationRequestTag, LastProgress, NetworkName, ReactorStateName,
+    ConsensusValidatorChanges, InformationRequestTag, LastProgress, NetworkName, ReactorStateName,
     TransactionWithExecutionInfo, Uptime,
 };
 use casper_types::{
@@ -157,4 +157,19 @@ pub async fn network_name(node_address: &str) -> Result<NetworkName, Error> {
     let network_name = utils::parse_response::<NetworkName>(response.response())?;
     return network_name
         .ok_or_else(|| Error::Response("unable to read last network name".to_string()));
+}
+
+pub async fn consensus_validator_changes(
+    node_address: &str,
+) -> Result<ConsensusValidatorChanges, Error> {
+    let request = information::make_information_get_request(
+        InformationRequestTag::ConsensusValidatorChanges,
+        &[],
+    )?;
+    let response = communication::send_request(node_address, request).await?;
+    let consensus_validator_changes =
+        utils::parse_response::<ConsensusValidatorChanges>(response.response())?;
+    return consensus_validator_changes.ok_or_else(|| {
+        Error::Response("unable to read last consensus validator changes".to_string())
+    });
 }
