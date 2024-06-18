@@ -6,7 +6,7 @@ use casper_binary_port::{
 };
 use casper_binary_port_access::{
     block_header_by_hash, block_header_by_height, latest_block_header, latest_signed_block,
-    latest_switch_block_header, signed_block_by_hash, signed_block_by_height,
+    latest_switch_block_header, signed_block_by_hash, signed_block_by_height, transaction_by_hash,
 };
 use casper_types::{
     bytesrepr::{self, FromBytes, ToBytes},
@@ -242,7 +242,18 @@ pub(super) async fn handle_information_request(
             hash,
             with_finalized_approvals,
             legacy,
-        } => todo!(),
+        } => {
+            let digest = Digest::from_hex(hash)?;
+            let transaction_hash = if legacy {
+                TransactionHash::Deploy(DeployHash::from(digest))
+            } else {
+                TransactionHash::from_raw(digest.value())
+            };
+            print_option(
+                transaction_by_hash(node_address, transaction_hash, with_finalized_approvals)
+                    .await?,
+            );
+        }
         Information::Peers => todo!(),
         Information::Uptime => todo!(),
         Information::LastProgress => todo!(),

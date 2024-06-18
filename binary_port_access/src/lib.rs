@@ -1,7 +1,12 @@
+use std::io::Read;
+
 use thiserror::Error;
 
-use casper_binary_port::InformationRequestTag;
-use casper_types::{bytesrepr::ToBytes, BlockHash, BlockHeader, BlockIdentifier, Digest, SignedBlock};
+use casper_binary_port::{InformationRequestTag, TransactionWithExecutionInfo};
+use casper_types::{
+    bytesrepr::ToBytes, BlockHash, BlockHeader, BlockIdentifier, Digest, SignedBlock,
+    TransactionHash,
+};
 
 mod communication;
 mod error;
@@ -19,9 +24,7 @@ pub async fn latest_switch_block_header(node_address: &str) -> Result<Option<Blo
     Ok(utils::parse_response::<BlockHeader>(response.response())?)
 }
 
-pub async fn latest_block_header(
-    node_address: &str,
-) -> Result<Option<BlockHeader>, Error> {
+pub async fn latest_block_header(node_address: &str) -> Result<Option<BlockHeader>, Error> {
     let block_id: Option<BlockIdentifier> = None;
     let request = information::make_information_get_request(
         InformationRequestTag::BlockHeader,
@@ -57,9 +60,7 @@ pub async fn block_header_by_hash(
     Ok(utils::parse_response::<BlockHeader>(response.response())?)
 }
 
-pub async fn latest_signed_block(
-    node_address: &str,
-) -> Result<Option<SignedBlock>, Error> {
+pub async fn latest_signed_block(node_address: &str) -> Result<Option<SignedBlock>, Error> {
     let block_id: Option<BlockIdentifier> = None;
     let request = information::make_information_get_request(
         InformationRequestTag::SignedBlock,
@@ -93,4 +94,23 @@ pub async fn signed_block_by_hash(
     )?;
     let response = communication::send_request(node_address, request).await?;
     Ok(utils::parse_response::<SignedBlock>(response.response())?)
+}
+
+pub async fn transaction_by_hash(
+    node_address: &str,
+    hash: TransactionHash,
+    with_finalized_approvals: bool,
+) -> Result<Option<TransactionWithExecutionInfo>, Error> {
+    let request = information::make_information_get_request(
+        InformationRequestTag::Transaction,
+        hash.to_bytes()?
+            .into_iter()
+            .chain(with_finalized_approvals.to_bytes()?.into_iter())
+            .collect::<Vec<_>>()
+            .as_slice(),
+    )?;
+    let response = communication::send_request(node_address, request).await?;
+    Ok(utils::parse_response::<TransactionWithExecutionInfo>(
+        response.response(),
+    )?)
 }
