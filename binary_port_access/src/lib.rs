@@ -2,14 +2,15 @@ use communication::parse_response;
 use thiserror::Error;
 
 use casper_binary_port::{
-    ConsensusStatus, ConsensusValidatorChanges, EraIdentifier, InformationRequestTag, LastProgress,
-    NetworkName, NodeStatus, ReactorStateName, RecordId, RewardResponse,
-    TransactionWithExecutionInfo, Uptime,
+    BinaryRequest, ConsensusStatus, ConsensusValidatorChanges, EraIdentifier, GetRequest,
+    GlobalStateQueryResult, GlobalStateRequest, InformationRequestTag, LastProgress, NetworkName,
+    NodeStatus, ReactorStateName, RecordId, RewardResponse, TransactionWithExecutionInfo, Uptime,
 };
 use casper_types::{
-    bytesrepr::ToBytes, AvailableBlockRange, BlockHash, BlockHeader, BlockIdentifier,
-    BlockSynchronizerStatus, ChainspecRawBytes, EraId, NextUpgrade, Peers, PublicKey, SignedBlock,
-    TransactionHash,
+    bytesrepr::{FromBytes, ToBytes},
+    AvailableBlockRange, BlockHash, BlockHeader, BlockIdentifier, BlockSynchronizerStatus,
+    ChainspecRawBytes, Digest, EraId, GlobalStateIdentifier, Key, NextUpgrade, Peers, PublicKey,
+    SignedBlock, TransactionHash,
 };
 
 mod communication;
@@ -281,4 +282,22 @@ pub async fn read_record(
     let request = utils::make_record_request(record_id, key);
     let response = communication::send_request(node_address, request).await?;
     Ok(response.response().payload().into())
+}
+
+pub async fn global_state_item_by_state_root_hash(
+    node_address: &str,
+    state_root_hash: Digest,
+    key: Key,
+    path: Vec<String>,
+) -> Result<Option<GlobalStateQueryResult>, Error> {
+    let state_identifier = GlobalStateIdentifier::StateRootHash(state_root_hash);
+    let global_state_request = GlobalStateRequest::Item {
+        state_identifier: Some(state_identifier),
+        base_key: key,
+        path,
+    };
+    let request = BinaryRequest::Get(GetRequest::State(Box::new(global_state_request)));
+
+    let response = communication::send_request(node_address, request).await?;
+    parse_response::<GlobalStateQueryResult>(response.response())
 }

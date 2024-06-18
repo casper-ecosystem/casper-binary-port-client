@@ -37,4 +37,6 @@ pub(crate) enum Error {
     ValidatorKeyRequired,
     #[error("need era id, block hash or block height")]
     InvalidEraIdentifier,
+    #[error("need state root hash, block hash or block height")]
+    InvalidStateIdentifier,
 }

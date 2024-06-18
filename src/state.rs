@@ -2,10 +2,14 @@ use casper_binary_port::{
     BinaryRequest, BinaryResponseAndRequest, GetRequest, GetTrieFullResult, GlobalStateQueryResult,
     GlobalStateRequest, PayloadType,
 };
+use casper_binary_port_access::global_state_item_by_state_root_hash;
 use casper_types::{bytesrepr::FromBytes, Digest, GlobalStateIdentifier, Key, KeyTag, StoredValue};
 use clap::Subcommand;
 
-use crate::{communication::send_request, error::Error, utils::EMPTY_STR};
+use crate::{
+    error::Error,
+    utils::{print_response, EMPTY_STR},
+};
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum DictionaryIdentifier {
@@ -131,113 +135,160 @@ pub(crate) enum State {
     },
 }
 
-impl TryFrom<State> for GlobalStateRequest {
-    type Error = Error;
-
-    fn try_from(value: State) -> Result<Self, Self::Error> {
-        match value {
-            State::Item {
-                state_root_hash,
-                block_hash,
-                block_height,
-                base_key,
-                path,
-            } => {
-                if path.is_some() {
-                    // TODO: Support path
-                    panic!("Path is not supported yet");
-                }
-                let state_identifier =
-                    resolve_state_identifier(state_root_hash, block_hash, block_height)?;
-                let base_key = Key::from_formatted_str(&base_key).map_err(Error::KeyFromStr)?;
-                Ok(GlobalStateRequest::Item {
-                    state_identifier,
-                    base_key,
-                    path: vec![],
-                })
-            }
-            State::AllItems {
-                state_root_hash,
-                block_hash,
-                block_height,
-                key_tag,
-            } => {
-                let state_identifier =
-                    resolve_state_identifier(state_root_hash, block_hash, block_height)?;
-
-                let key_tag = match key_tag {
-                    0 => KeyTag::Account,
-                    1 => KeyTag::Hash,
-                    2 => KeyTag::URef,
-                    3 => KeyTag::Transfer,
-                    4 => KeyTag::DeployInfo,
-                    5 => KeyTag::EraInfo,
-                    6 => KeyTag::Balance,
-                    7 => KeyTag::Bid,
-                    8 => KeyTag::Withdraw,
-                    9 => KeyTag::Dictionary,
-                    10 => KeyTag::SystemEntityRegistry,
-                    11 => KeyTag::EraSummary,
-                    12 => KeyTag::Unbond,
-                    13 => KeyTag::ChainspecRegistry,
-                    14 => KeyTag::ChecksumRegistry,
-                    15 => KeyTag::BidAddr,
-                    16 => KeyTag::Package,
-                    17 => KeyTag::AddressableEntity,
-                    18 => KeyTag::ByteCode,
-                    19 => KeyTag::Message,
-                    20 => KeyTag::NamedKey,
-                    21 => KeyTag::BlockGlobal,
-                    22 => KeyTag::BalanceHold,
-                    23 => KeyTag::EntryPoint,
-                    _ => return Err(Error::InvalidKeyTag(key_tag)),
-                };
-
-                Ok(GlobalStateRequest::AllItems {
-                    state_identifier,
-                    key_tag,
-                })
-            }
-            State::Trie { digest } => {
-                let digest = Digest::from_hex(digest)?;
-                Ok(GlobalStateRequest::Trie { trie_key: digest })
-            }
-            State::DictionaryItem {
-                state_root_hash: _,
-                block_hash: _,
-                block_height: _,
-                dictionary_identifier: _,
-            } => todo!(),
-        }
-    }
-}
-
 fn resolve_state_identifier(
     state_root_hash: Option<String>,
     block_hash: Option<String>,
     block_height: Option<u64>,
-) -> Result<Option<GlobalStateIdentifier>, <GlobalStateRequest as TryFrom<State>>::Error> {
-    Ok(match (state_root_hash, block_hash, block_height) {
+) -> Result<Option<GlobalStateIdentifier>, Error> {
+    match (state_root_hash, block_hash, block_height) {
         (Some(state_root_hash), None, None) => {
             let digest = Digest::from_hex(state_root_hash)?;
-            Some(GlobalStateIdentifier::StateRootHash(digest))
-        },
+            Ok(Some(GlobalStateIdentifier::StateRootHash(digest)))
+        }
         (None, Some(block_hash), None) => {
             let digest = Digest::from_hex(block_hash)?;
-            Some(GlobalStateIdentifier::BlockHash(digest.into()))
-        },
-        (None, None, Some(block_height)) => Some(GlobalStateIdentifier::BlockHeight(block_height)),
-        (None, None, None) => None,
-        _ => unreachable!("global state must either be empty or be identified by exactly one of: state_root_hash, block_hash, block_height"),
-    })
+            Ok(Some(GlobalStateIdentifier::BlockHash(digest.into())))
+        }
+        (None, None, Some(block_height)) => {
+            Ok(Some(GlobalStateIdentifier::BlockHeight(block_height)))
+        }
+        (None, None, None) => Ok(None),
+        _ => Err(Error::InvalidStateIdentifier),
+    }
 }
 
-pub(super) async fn handle_state_request(req: State) -> Result<(), Error> {
-    let request: GlobalStateRequest = req.try_into()?;
-    let response = send_request(BinaryRequest::Get(GetRequest::State(Box::new(request)))).await?;
-    handle_state_response(&response);
+pub(super) async fn handle_state_request(node_address: &str, req: State) -> Result<(), Error> {
+    match req {
+        State::Item {
+            state_root_hash,
+            block_hash,
+            block_height,
+            base_key,
+            path,
+        } => {
+            if path.is_some() {
+                unimplemented!("Path is not supported yet");
+            }
+            let state_identifier =
+                resolve_state_identifier(state_root_hash, block_hash, block_height)?;
+            let base_key = Key::from_formatted_str(&base_key).map_err(Error::KeyFromStr)?;
+
+            match state_identifier {
+                Some(state_identifier) => match state_identifier {
+                    GlobalStateIdentifier::BlockHash(_) => todo!(),
+                    GlobalStateIdentifier::BlockHeight(_) => todo!(),
+                    GlobalStateIdentifier::StateRootHash(state_root_hash) => {
+                        let global_state_query_result = global_state_item_by_state_root_hash(
+                            node_address,
+                            state_root_hash,
+                            base_key,
+                            vec![],
+                        )
+                        .await?;
+                        print_response(global_state_query_result);
+                    }
+                },
+                None => todo!(),
+            }
+        }
+        State::AllItems {
+            state_root_hash,
+            block_hash,
+            block_height,
+            key_tag,
+        } => todo!(),
+        State::Trie { digest } => todo!(),
+        State::DictionaryItem {
+            state_root_hash,
+            block_hash,
+            block_height,
+            dictionary_identifier,
+        } => todo!(),
+    }
 
     Ok(())
+
+    /*
+    match req {
+        State::Item {
+            state_root_hash,
+            block_hash,
+            block_height,
+            base_key,
+            path,
+        } => {
+            if path.is_some() {
+                unimplemented!("Path is not supported yet");
+            }
+            let state_identifier =
+                resolve_state_identifier(state_root_hash, block_hash, block_height)?;
+            let base_key = Key::from_formatted_str(&base_key).map_err(Error::KeyFromStr)?;
+
+            match state_identifier {
+                Some(state_identifier) => match state_identifier {
+                    GlobalStateIdentifier::BlockHash(_) => todo!(),
+                    GlobalStateIdentifier::BlockHeight(_) => todo!(),
+                    GlobalStateIdentifier::StateRootHash(state_root_hash) => {
+                        global_state_item_by_state_root_hash(
+                            node_address,
+                            state_root_hash,
+                            base_key,
+                            path,
+                        )
+                        .await?
+                    }
+                },
+                None => todo!(),
+            }
+        }
+        State::AllItems {
+            state_root_hash,
+            block_hash,
+            block_height,
+            key_tag,
+        } => {
+            let state_identifier =
+                resolve_state_identifier(state_root_hash, block_hash, block_height)?;
+
+            let key_tag = match key_tag {
+                0 => KeyTag::Account,
+                1 => KeyTag::Hash,
+                2 => KeyTag::URef,
+                3 => KeyTag::Transfer,
+                4 => KeyTag::DeployInfo,
+                5 => KeyTag::EraInfo,
+                6 => KeyTag::Balance,
+                7 => KeyTag::Bid,
+                8 => KeyTag::Withdraw,
+                9 => KeyTag::Dictionary,
+                10 => KeyTag::SystemEntityRegistry,
+                11 => KeyTag::EraSummary,
+                12 => KeyTag::Unbond,
+                13 => KeyTag::ChainspecRegistry,
+                14 => KeyTag::ChecksumRegistry,
+                15 => KeyTag::BidAddr,
+                16 => KeyTag::Package,
+                17 => KeyTag::AddressableEntity,
+                18 => KeyTag::ByteCode,
+                19 => KeyTag::Message,
+                20 => KeyTag::NamedKey,
+                21 => KeyTag::BlockGlobal,
+                22 => KeyTag::BalanceHold,
+                23 => KeyTag::EntryPoint,
+                _ => return Err(Error::InvalidKeyTag(key_tag)),
+            };
+        }
+        State::Trie { digest } => {
+            let digest = Digest::from_hex(digest)?;
+        }
+        State::DictionaryItem {
+            state_root_hash: _,
+            block_hash: _,
+            block_height: _,
+            dictionary_identifier: _,
+        } => todo!(),
+    }
+    */
 }
 
 fn handle_state_response(response: &BinaryResponseAndRequest) {

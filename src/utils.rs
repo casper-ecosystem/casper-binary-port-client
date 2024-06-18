@@ -1,9 +1,8 @@
 use std::fmt;
 
-use casper_types::ProtocolVersion;
-
-pub(crate) const SUPPORTED_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::from_parts(2, 0, 0);
 pub(crate) const EMPTY_STR: &str = "[EMPTY]";
+
+// TODO[RC]: All these should output proper JSON data.
 
 pub(crate) fn print_response_opt<T: fmt::Debug>(opt: Option<T>) {
     match opt {

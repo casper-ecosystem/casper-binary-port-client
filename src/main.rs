@@ -7,7 +7,6 @@ use record::handle_record_request;
 use state::handle_state_request;
 
 mod args;
-mod communication;
 mod error;
 mod information;
 mod record;
@@ -21,7 +20,7 @@ async fn main() -> ExitCode {
     let result = match args.commands {
         Commands::Information(req) => handle_information_request(&args.node_address, req).await,
         Commands::Record { id, key } => handle_record_request(&args.node_address, id, &key).await,
-        Commands::State(req) => handle_state_request(req).await,
+        Commands::State(req) => handle_state_request(&args.node_address, req).await,
     };
 
     if let Err(err) = result {
