@@ -1,10 +1,6 @@
 use casper_binary_port::{BinaryRequest, BinaryResponseAndRequest, GetRequest, RecordId};
 
-use crate::{
-    communication::send_request,
-    error::Error,
-    utils::{print_hex_payload, EMPTY_STR},
-};
+use crate::{communication::send_request, error::Error, utils::print_hex_payload};
 
 pub(super) async fn handle_record_request(record_id: u16, key: &str) -> Result<(), Error> {
     let _: RecordId = record_id.try_into().map_err(Error::Record)?;

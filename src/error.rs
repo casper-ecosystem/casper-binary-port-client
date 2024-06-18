@@ -1,5 +1,5 @@
 use casper_binary_port::UnknownRecordId;
-use casper_types::{bytesrepr, DigestError, ErrorExt, KeyFromStrError};
+use casper_types::{bytesrepr, DigestError, KeyFromStrError};
 use hex::FromHexError;
 use thiserror::Error;
 
@@ -30,9 +30,9 @@ pub(crate) enum Error {
     #[error("need either a key or key file")]
     EitherKeyOrKeyFileRequired,
     #[error(transparent)]
-    ErrorExt(#[from] ErrorExt),
+    CasperTypesExt(#[from] casper_types::ErrorExt),
     #[error(transparent)]
-    Error(#[from] casper_types::Error),
+    CasperTypes(#[from] casper_types::Error),
     #[error("validator key required")]
     ValidatorKeyRequired,
     #[error("need era id, block hash or block height")]

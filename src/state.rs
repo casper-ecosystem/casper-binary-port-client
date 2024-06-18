@@ -3,7 +3,7 @@ use casper_binary_port::{
     GlobalStateRequest, PayloadType,
 };
 use casper_types::{bytesrepr::FromBytes, Digest, GlobalStateIdentifier, Key, KeyTag, StoredValue};
-use clap::{ArgGroup, Subcommand};
+use clap::Subcommand;
 
 use crate::{communication::send_request, error::Error, utils::EMPTY_STR};
 
@@ -135,7 +135,7 @@ impl TryFrom<State> for GlobalStateRequest {
     type Error = Error;
 
     fn try_from(value: State) -> Result<Self, Self::Error> {
-        let global_state_request = match value {
+        match value {
             State::Item {
                 state_root_hash,
                 block_hash,
@@ -149,8 +149,7 @@ impl TryFrom<State> for GlobalStateRequest {
                 }
                 let state_identifier =
                     resolve_state_identifier(state_root_hash, block_hash, block_height)?;
-                let base_key =
-                    Key::from_formatted_str(&base_key).map_err(|err| Error::KeyFromStr(err))?;
+                let base_key = Key::from_formatted_str(&base_key).map_err(Error::KeyFromStr)?;
                 Ok(GlobalStateRequest::Item {
                     state_identifier,
                     base_key,
@@ -204,13 +203,12 @@ impl TryFrom<State> for GlobalStateRequest {
                 Ok(GlobalStateRequest::Trie { trie_key: digest })
             }
             State::DictionaryItem {
-                state_root_hash,
-                block_hash,
-                block_height,
-                dictionary_identifier,
+                state_root_hash: _,
+                block_hash: _,
+                block_height: _,
+                dictionary_identifier: _,
             } => todo!(),
-        };
-        global_state_request
+        }
     }
 }
 
@@ -259,7 +257,7 @@ fn handle_state_response(response: &BinaryResponseAndRequest) {
     match tag {
         t if t == PayloadType::GlobalStateQueryResult as u8 => {
             let (result, remainder): (GlobalStateQueryResult, _) =
-                FromBytes::from_bytes(&response.response().payload()).expect("should deserialize");
+                FromBytes::from_bytes(response.response().payload()).expect("should deserialize");
             assert!(remainder.is_empty(), "should have no remaining bytes");
 
             let (value, proof) = result.into_inner();
@@ -270,7 +268,7 @@ fn handle_state_response(response: &BinaryResponseAndRequest) {
         }
         t if t == PayloadType::StoredValues as u8 => {
             let (result, remainder): (Vec<StoredValue>, _) =
-                FromBytes::from_bytes(&response.response().payload()).expect("should deserialize");
+                FromBytes::from_bytes(response.response().payload()).expect("should deserialize");
             assert!(remainder.is_empty(), "should have no remaining bytes");
             println!("{} stored values:", result.len());
             for (index, value) in result.into_iter().enumerate() {
@@ -280,7 +278,7 @@ fn handle_state_response(response: &BinaryResponseAndRequest) {
         }
         t if t == PayloadType::GetTrieFullResult as u8 => {
             let (result, remainder): (GetTrieFullResult, _) =
-                FromBytes::from_bytes(&response.response().payload()).expect("should deserialize");
+                FromBytes::from_bytes(response.response().payload()).expect("should deserialize");
             assert!(remainder.is_empty(), "should have no remaining bytes");
 
             let result = result.into_inner();
@@ -293,7 +291,6 @@ fn handle_state_response(response: &BinaryResponseAndRequest) {
                 }
                 None => {
                     println!("{EMPTY_STR}");
-                    return;
                 }
             }
         }
