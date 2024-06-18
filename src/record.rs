@@ -1,24 +1,17 @@
-use casper_binary_port::{BinaryRequest, BinaryResponseAndRequest, GetRequest, RecordId};
+use casper_binary_port_access::read_record;
 
-use crate::{communication::send_request, error::Error, utils::print_hex_payload};
+use crate::{error::Error, utils::print_hex_payload};
 
-pub(super) async fn handle_record_request(record_id: u16, key: &str) -> Result<(), Error> {
-    let _: RecordId = record_id.try_into().map_err(Error::Record)?;
+pub(super) async fn handle_record_request(
+    node_address: &str,
+    record_id: u16,
+    key: &str,
+) -> Result<(), Error> {
+    let record_id = record_id.try_into().map_err(Error::Record)?;
+    let key = hex::decode(key)?;
 
-    let request = make_record_get_request(record_id, hex::decode(key)?)?;
-    let response = send_request(request).await?;
-    handle_record_response(&response);
+    let response = read_record(node_address, record_id, key.as_slice()).await?;
+    print_hex_payload(response.as_slice());
 
     Ok(())
-}
-
-fn handle_record_response(response: &BinaryResponseAndRequest) {
-    print_hex_payload(response.response().payload())
-}
-
-fn make_record_get_request(tag: u16, key: Vec<u8>) -> Result<BinaryRequest, Error> {
-    Ok(BinaryRequest::Get(GetRequest::Record {
-        record_type_tag: tag,
-        key,
-    }))
 }
