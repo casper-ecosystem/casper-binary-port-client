@@ -7,8 +7,8 @@ use casper_binary_port::{
     TransactionWithExecutionInfo, Uptime,
 };
 use casper_types::{
-    bytesrepr::ToBytes, BlockHash, BlockHeader, BlockIdentifier, Digest, Peers, SignedBlock,
-    TransactionHash,
+    bytesrepr::ToBytes, AvailableBlockRange, BlockHash, BlockHeader, BlockIdentifier,
+    BlockSynchronizerStatus, Digest, Peers, SignedBlock, TransactionHash,
 };
 
 mod communication;
@@ -172,4 +172,28 @@ pub async fn consensus_validator_changes(
     return consensus_validator_changes.ok_or_else(|| {
         Error::Response("unable to read last consensus validator changes".to_string())
     });
+}
+
+pub async fn block_synchronizer_status(
+    node_address: &str,
+) -> Result<BlockSynchronizerStatus, Error> {
+    let request = information::make_information_get_request(
+        InformationRequestTag::BlockSynchronizerStatus,
+        &[],
+    )?;
+    let response = communication::send_request(node_address, request).await?;
+    let block_synchronizer_status =
+        utils::parse_response::<BlockSynchronizerStatus>(response.response())?;
+    return block_synchronizer_status.ok_or_else(|| {
+        Error::Response("unable to read last block synchronizer status".to_string())
+    });
+}
+
+pub async fn available_block_range(node_address: &str) -> Result<AvailableBlockRange, Error> {
+    let request =
+        information::make_information_get_request(InformationRequestTag::AvailableBlockRange, &[])?;
+    let response = communication::send_request(node_address, request).await?;
+    let available_block_range = utils::parse_response::<AvailableBlockRange>(response.response())?;
+    return available_block_range
+        .ok_or_else(|| Error::Response("unable to read last available block range".to_string()));
 }
