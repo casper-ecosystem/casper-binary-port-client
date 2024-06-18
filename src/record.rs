@@ -4,9 +4,8 @@ use crate::{communication::send_request, error::Error, utils::print_hex_payload}
 
 pub(super) async fn handle_record_request(record_id: u16, key: &str) -> Result<(), Error> {
     let _: RecordId = record_id.try_into().map_err(Error::Record)?;
-    let key = hex::decode(key)?;
 
-    let request = make_record_get_request(record_id, key)?;
+    let request = make_record_get_request(record_id, hex::decode(key)?)?;
     let response = send_request(request).await?;
     handle_record_response(&response);
 

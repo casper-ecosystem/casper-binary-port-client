@@ -1,5 +1,6 @@
 use casper_binary_port::{
-    BinaryRequest, EraIdentifier, InformationRequest, InformationRequestTag, RewardResponse,
+    BinaryRequest, EraIdentifier, GetRequest, InformationRequest, InformationRequestTag, RecordId,
+    RewardResponse,
 };
 use casper_types::{bytesrepr::ToBytes, PublicKey};
 
@@ -15,6 +16,13 @@ pub(crate) fn make_information_get_request(
     let information_request = InformationRequest::try_from((tag, key))?;
     let get_request = information_request.try_into()?;
     Ok(BinaryRequest::Get(get_request))
+}
+
+pub(crate) fn make_record_request(record_id: RecordId, key: &[u8]) -> BinaryRequest {
+    BinaryRequest::Get(GetRequest::Record {
+        key: key.to_vec(),
+        record_type_tag: record_id as u16,
+    })
 }
 
 pub(crate) async fn delegator_reward_by_era_identifier(

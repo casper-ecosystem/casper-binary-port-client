@@ -3,8 +3,8 @@ use thiserror::Error;
 
 use casper_binary_port::{
     ConsensusStatus, ConsensusValidatorChanges, EraIdentifier, InformationRequestTag, LastProgress,
-    NetworkName, NodeStatus, ReactorStateName, RewardResponse, TransactionWithExecutionInfo,
-    Uptime,
+    NetworkName, NodeStatus, ReactorStateName, RecordId, RewardResponse,
+    TransactionWithExecutionInfo, Uptime,
 };
 use casper_types::{
     bytesrepr::ToBytes, AvailableBlockRange, BlockHash, BlockHeader, BlockIdentifier,
@@ -271,4 +271,14 @@ pub async fn delegator_reward_by_block_hash(
     let era_identifier = EraIdentifier::Block(BlockIdentifier::Hash(block_hash));
     delegator_reward_by_era_identifier(node_address, validator_key, delegator_key, era_identifier)
         .await
+}
+
+pub async fn read_record(
+    node_address: &str,
+    record_id: RecordId,
+    key: &[u8],
+) -> Result<Vec<u8>, Error> {
+    let request = utils::make_record_request(record_id, key);
+    let response = communication::send_request(node_address, request).await?;
+    Ok(response.response().payload().into())
 }
