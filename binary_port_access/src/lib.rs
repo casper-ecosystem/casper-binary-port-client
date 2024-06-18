@@ -4,7 +4,7 @@ use thiserror::Error;
 
 use casper_binary_port::{InformationRequestTag, TransactionWithExecutionInfo};
 use casper_types::{
-    bytesrepr::ToBytes, BlockHash, BlockHeader, BlockIdentifier, Digest, SignedBlock,
+    bytesrepr::ToBytes, BlockHash, BlockHeader, BlockIdentifier, Digest, Peers, SignedBlock,
     TransactionHash,
 };
 
@@ -113,4 +113,11 @@ pub async fn transaction_by_hash(
     Ok(utils::parse_response::<TransactionWithExecutionInfo>(
         response.response(),
     )?)
+}
+
+pub async fn peers(node_address: &str) -> Result<Peers, Error> {
+    let request = information::make_information_get_request(InformationRequestTag::Peers, &[])?;
+    let response = communication::send_request(node_address, request).await?;
+    let peers = utils::parse_response::<Peers>(response.response())?;
+    return peers.ok_or_else(|| Error::Response("unable to read peers".to_string()));
 }

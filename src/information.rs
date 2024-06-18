@@ -6,7 +6,8 @@ use casper_binary_port::{
 };
 use casper_binary_port_access::{
     block_header_by_hash, block_header_by_height, latest_block_header, latest_signed_block,
-    latest_switch_block_header, signed_block_by_hash, signed_block_by_height, transaction_by_hash,
+    latest_switch_block_header, peers, signed_block_by_hash, signed_block_by_height,
+    transaction_by_hash,
 };
 use casper_types::{
     bytesrepr::{self, FromBytes, ToBytes},
@@ -16,7 +17,11 @@ use casper_types::{
 };
 use clap::{command, ArgGroup, Subcommand};
 
-use crate::{communication::send_request, error::Error, utils::print_option};
+use crate::{
+    communication::send_request,
+    error::Error,
+    utils::{print_response, print_response_opt},
+};
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum Information {
@@ -217,24 +222,28 @@ pub(super) async fn handle_information_request(
 ) -> Result<(), Error> {
     match req {
         Information::BlockHeader { hash, height } => match (hash, height) {
-            (None, None) => print_option(latest_block_header(node_address).await?),
+            (None, None) => print_response_opt(latest_block_header(node_address).await?),
             (None, Some(height)) => {
-                print_option(block_header_by_height(node_address, height).await?)
+                print_response_opt(block_header_by_height(node_address, height).await?)
             }
             (Some(hash), None) => {
                 let digest = casper_types::Digest::from_hex(hash)?;
-                print_option(block_header_by_hash(node_address, BlockHash::new(digest)).await?);
+                print_response_opt(
+                    block_header_by_hash(node_address, BlockHash::new(digest)).await?,
+                );
             }
             (Some(_), Some(_)) => return Err(Error::EitherHashOrHeightRequired),
         },
         Information::SignedBlock { hash, height } => match (hash, height) {
-            (None, None) => print_option(latest_signed_block(node_address).await?),
+            (None, None) => print_response_opt(latest_signed_block(node_address).await?),
             (None, Some(height)) => {
-                print_option(signed_block_by_height(node_address, height).await?)
+                print_response_opt(signed_block_by_height(node_address, height).await?)
             }
             (Some(hash), None) => {
                 let digest = casper_types::Digest::from_hex(hash)?;
-                print_option(signed_block_by_hash(node_address, BlockHash::new(digest)).await?);
+                print_response_opt(
+                    signed_block_by_hash(node_address, BlockHash::new(digest)).await?,
+                );
             }
             (Some(_), Some(_)) => return Err(Error::EitherHashOrHeightRequired),
         },
@@ -249,12 +258,12 @@ pub(super) async fn handle_information_request(
             } else {
                 TransactionHash::from_raw(digest.value())
             };
-            print_option(
+            print_response_opt(
                 transaction_by_hash(node_address, transaction_hash, with_finalized_approvals)
                     .await?,
             );
         }
-        Information::Peers => todo!(),
+        Information::Peers => print_response(peers(node_address).await?),
         Information::Uptime => todo!(),
         Information::LastProgress => todo!(),
         Information::ReactorState => todo!(),
@@ -267,7 +276,7 @@ pub(super) async fn handle_information_request(
         Information::ChainspecRawBytes => todo!(),
         Information::NodeStatus => todo!(),
         Information::LatestSwitchBlockHeader => {
-            print_option(latest_switch_block_header(node_address).await?)
+            print_response_opt(latest_switch_block_header(node_address).await?)
         }
         Information::Reward {
             era,
@@ -290,71 +299,71 @@ fn handle_information_response(
     match tag {
         InformationRequestTag::NodeStatus => {
             let res = parse_response::<NodeStatus>(response.response())?;
-            print_option(res);
+            print_response_opt(res);
         }
         InformationRequestTag::BlockHeader => {
             let res = parse_response::<BlockHeader>(response.response())?;
-            print_option(res);
+            print_response_opt(res);
         }
         InformationRequestTag::ChainspecRawBytes => {
             let res = parse_response::<ChainspecRawBytes>(response.response())?;
-            print_option(res);
+            print_response_opt(res);
         }
         InformationRequestTag::Uptime => {
             let res = parse_response::<Uptime>(response.response())?;
-            print_option(res);
+            print_response_opt(res);
         }
         InformationRequestTag::SignedBlock => {
             let res = parse_response::<SignedBlock>(response.response())?;
-            print_option(res);
+            print_response_opt(res);
         }
         InformationRequestTag::Transaction => {
             let res = parse_response::<TransactionWithExecutionInfo>(response.response())?;
-            print_option(res);
+            print_response_opt(res);
         }
         InformationRequestTag::Peers => {
             let res = parse_response::<Peers>(response.response())?;
-            print_option(res);
+            print_response_opt(res);
         }
         InformationRequestTag::LastProgress => {
             let res = parse_response::<LastProgress>(response.response())?;
-            print_option(res);
+            print_response_opt(res);
         }
         InformationRequestTag::ReactorState => {
             let res = parse_response::<ReactorStateName>(response.response())?;
-            print_option(res);
+            print_response_opt(res);
         }
         InformationRequestTag::NetworkName => {
             let res = parse_response::<NetworkName>(response.response())?;
-            print_option(res);
+            print_response_opt(res);
         }
         InformationRequestTag::ConsensusValidatorChanges => {
             let res = parse_response::<ConsensusValidatorChanges>(response.response())?;
-            print_option(res);
+            print_response_opt(res);
         }
         InformationRequestTag::BlockSynchronizerStatus => {
             let res = parse_response::<BlockSynchronizerStatus>(response.response())?;
-            print_option(res);
+            print_response_opt(res);
         }
         InformationRequestTag::AvailableBlockRange => {
             let res = parse_response::<AvailableBlockRange>(response.response())?;
-            print_option(res);
+            print_response_opt(res);
         }
         InformationRequestTag::NextUpgrade => {
             let res = parse_response::<NextUpgrade>(response.response())?;
-            print_option(res);
+            print_response_opt(res);
         }
         InformationRequestTag::ConsensusStatus => {
             let res = parse_response::<ConsensusStatus>(response.response())?;
-            print_option(res);
+            print_response_opt(res);
         }
         InformationRequestTag::LatestSwitchBlockHeader => {
             let res = parse_response::<BlockHeader>(response.response())?;
-            print_option(res);
+            print_response_opt(res);
         }
         InformationRequestTag::Reward => {
             let res = parse_response::<RewardResponse>(response.response())?;
-            print_option(res);
+            print_response_opt(res);
         }
     }
     Ok(())
