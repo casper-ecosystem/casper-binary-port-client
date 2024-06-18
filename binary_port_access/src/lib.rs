@@ -4,7 +4,7 @@ use thiserror::Error;
 
 use casper_binary_port::{
     ConsensusStatus, ConsensusValidatorChanges, InformationRequestTag, LastProgress, NetworkName,
-    ReactorStateName, TransactionWithExecutionInfo, Uptime,
+    NodeStatus, ReactorStateName, TransactionWithExecutionInfo, Uptime,
 };
 use casper_types::{
     bytesrepr::ToBytes, AvailableBlockRange, BlockHash, BlockHeader, BlockIdentifier,
@@ -222,4 +222,13 @@ pub async fn chainspec_raw_bytes(node_address: &str) -> Result<ChainspecRawBytes
     let chainspec_raw_bytes = utils::parse_response::<ChainspecRawBytes>(response.response())?;
     return chainspec_raw_bytes
         .ok_or_else(|| Error::Response("unable to read last chainspec raw bytes".to_string()));
+}
+
+pub async fn node_status(node_address: &str) -> Result<NodeStatus, Error> {
+    let request =
+        information::make_information_get_request(InformationRequestTag::NodeStatus, &[])?;
+    let response = communication::send_request(node_address, request).await?;
+    let node_status = utils::parse_response::<NodeStatus>(response.response())?;
+    return node_status
+        .ok_or_else(|| Error::Response("unable to read last node status".to_string()));
 }
