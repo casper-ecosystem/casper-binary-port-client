@@ -1,19 +1,57 @@
-use casper_binary_port::{BinaryResponse, PayloadEntity};
-use casper_types::bytesrepr::{self, FromBytes};
+use casper_binary_port::{
+    BinaryRequest, EraIdentifier, InformationRequest, InformationRequestTag, RewardResponse,
+};
+use casper_types::{bytesrepr::ToBytes, PublicKey};
 
-use crate::Error;
+use crate::{
+    communication::{self, parse_response},
+    Error,
+};
 
-pub(crate) fn parse_response<A: FromBytes + PayloadEntity>(
-    response: &BinaryResponse,
-) -> Result<Option<A>, Error> {
-    match response.returned_data_type_tag() {
-        Some(found) if found == u8::from(A::PAYLOAD_TYPE) => {
-            // TODO: Verbose: print length of payload
-            Ok(Some(bytesrepr::deserialize_from_slice(response.payload())?))
+pub(crate) fn make_information_get_request(
+    tag: InformationRequestTag,
+    key: &[u8],
+) -> Result<BinaryRequest, Error> {
+    let information_request = InformationRequest::try_from((tag, key))?;
+    let get_request = information_request.try_into()?;
+    Ok(BinaryRequest::Get(get_request))
+}
+
+pub(crate) async fn delegator_reward_by_era_identifier(
+    node_address: &str,
+    validator_key: PublicKey,
+    delegator_key: PublicKey,
+    era_identifier: EraIdentifier,
+) -> Result<Option<RewardResponse>, Error> {
+    let request = make_information_get_request(
+        InformationRequestTag::Reward,
+        InformationRequest::Reward {
+            era_identifier: Some(era_identifier),
+            validator: Box::new(validator_key),
+            delegator: Some(Box::new(delegator_key)),
         }
-        Some(other) => Err(Error::Response(format!(
-            "unsupported response type: {other}"
-        ))),
-        _ => Ok(None),
-    }
+        .to_bytes()?
+        .as_slice(),
+    )?;
+    let response = communication::send_request(node_address, request).await?;
+    parse_response::<RewardResponse>(response.response())
+}
+
+pub(crate) async fn validator_reward_by_era_identifier(
+    node_address: &str,
+    validator_key: PublicKey,
+    era_identifier: EraIdentifier,
+) -> Result<Option<RewardResponse>, Error> {
+    let request = make_information_get_request(
+        InformationRequestTag::Reward,
+        InformationRequest::Reward {
+            era_identifier: Some(era_identifier),
+            validator: Box::new(validator_key),
+            delegator: None,
+        }
+        .to_bytes()?
+        .as_slice(),
+    )?;
+    let response = communication::send_request(node_address, request).await?;
+    parse_response::<RewardResponse>(response.response())
 }
