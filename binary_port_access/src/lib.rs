@@ -3,7 +3,8 @@ use std::io::Read;
 use thiserror::Error;
 
 use casper_binary_port::{
-    InformationRequestTag, LastProgress, ReactorStateName, TransactionWithExecutionInfo, Uptime,
+    InformationRequestTag, LastProgress, NetworkName, ReactorStateName,
+    TransactionWithExecutionInfo, Uptime,
 };
 use casper_types::{
     bytesrepr::ToBytes, BlockHash, BlockHeader, BlockIdentifier, Digest, Peers, SignedBlock,
@@ -147,4 +148,13 @@ pub async fn reactor_state(node_address: &str) -> Result<ReactorStateName, Error
     let reactor_state = utils::parse_response::<ReactorStateName>(response.response())?;
     return reactor_state
         .ok_or_else(|| Error::Response("unable to read last reactor state".to_string()));
+}
+
+pub async fn network_name(node_address: &str) -> Result<NetworkName, Error> {
+    let request =
+        information::make_information_get_request(InformationRequestTag::NetworkName, &[])?;
+    let response = communication::send_request(node_address, request).await?;
+    let network_name = utils::parse_response::<NetworkName>(response.response())?;
+    return network_name
+        .ok_or_else(|| Error::Response("unable to read last network name".to_string()));
 }
