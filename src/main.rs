@@ -9,6 +9,7 @@ use state::handle_state_request;
 mod args;
 mod error;
 mod information;
+mod json_print;
 mod record;
 mod state;
 mod utils;

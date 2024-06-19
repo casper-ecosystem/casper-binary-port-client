@@ -185,7 +185,7 @@ pub(super) async fn handle_state_request(node_address: &str, req: State) -> Resu
                             vec![],
                         )
                         .await?;
-                        print_response(global_state_query_result);
+                        //print_response(global_state_query_result);
                     }
                 },
                 None => todo!(),

@@ -1,3 +1,6 @@
+use std::{fmt, io};
+
+use casper_binary_port::Uptime;
 use casper_binary_port_access::{
     available_block_range, block_header_by_hash, block_header_by_height, block_synchronizer_status,
     chainspec_raw_bytes, consensus_status, consensus_validator_changes,
@@ -7,13 +10,13 @@ use casper_binary_port_access::{
     signed_block_by_height, transaction_by_hash, uptime, validator_reward_by_block_hash,
     validator_reward_by_block_height, validator_reward_by_era,
 };
-use casper_types::{AsymmetricType, BlockHash, DeployHash, Digest, PublicKey, TransactionHash};
-use clap::{command, ArgGroup, Subcommand};
-
-use crate::{
-    error::Error,
-    utils::{print_response, print_response_opt},
+use casper_types::{
+    AsymmetricType, BlockHash, DeployHash, Digest, Peers, PublicKey, TransactionHash,
 };
+use clap::{command, ArgGroup, Subcommand};
+use serde::Serialize;
+
+use crate::{error::Error, json_print::JsonPrintable, utils::print_response};
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum Information {
@@ -102,33 +105,25 @@ pub(super) async fn handle_information_request(
     node_address: &str,
     req: Information,
 ) -> Result<(), Error> {
-    match req {
-        Information::BlockHeader { hash, height } => match (hash, height) {
-            (None, None) => print_response_opt(latest_block_header(node_address).await?),
-            (None, Some(height)) => {
-                print_response_opt(block_header_by_height(node_address, height).await?)
-            }
+    let response: Box<dyn JsonPrintable> = match req {
+        Information::BlockHeader { hash, height } => Box::new(match (hash, height) {
+            (None, None) => latest_block_header(node_address).await?,
+            (None, Some(height)) => block_header_by_height(node_address, height).await?,
             (Some(hash), None) => {
                 let digest = casper_types::Digest::from_hex(hash)?;
-                print_response_opt(
-                    block_header_by_hash(node_address, BlockHash::new(digest)).await?,
-                );
+                block_header_by_hash(node_address, BlockHash::new(digest)).await?
             }
             (Some(_), Some(_)) => return Err(Error::EitherHashOrHeightRequired),
-        },
-        Information::SignedBlock { hash, height } => match (hash, height) {
-            (None, None) => print_response_opt(latest_signed_block(node_address).await?),
-            (None, Some(height)) => {
-                print_response_opt(signed_block_by_height(node_address, height).await?)
-            }
+        }),
+        Information::SignedBlock { hash, height } => Box::new(match (hash, height) {
+            (None, None) => latest_signed_block(node_address).await?,
+            (None, Some(height)) => signed_block_by_height(node_address, height).await?,
             (Some(hash), None) => {
                 let digest = casper_types::Digest::from_hex(hash)?;
-                print_response_opt(
-                    signed_block_by_hash(node_address, BlockHash::new(digest)).await?,
-                );
+                signed_block_by_hash(node_address, BlockHash::new(digest)).await?
             }
             (Some(_), Some(_)) => return Err(Error::EitherHashOrHeightRequired),
-        },
+        }),
         Information::Transaction {
             hash,
             with_finalized_approvals,
@@ -140,31 +135,29 @@ pub(super) async fn handle_information_request(
             } else {
                 TransactionHash::from_raw(digest.value())
             };
-            print_response_opt(
+            Box::new(
                 transaction_by_hash(node_address, transaction_hash, with_finalized_approvals)
                     .await?,
-            );
+            )
         }
-        Information::Peers => print_response(peers(node_address).await?),
-        Information::Uptime => print_response(uptime(node_address).await?),
-        Information::LastProgress => print_response(last_progress(node_address).await?),
-        Information::ReactorState => print_response(reactor_state(node_address).await?),
-        Information::NetworkName => print_response(network_name(node_address).await?),
+        Information::Peers => Box::new(peers(node_address).await?),
+        Information::Uptime => Box::new(uptime(node_address).await?),
+        Information::LastProgress => Box::new(last_progress(node_address).await?),
+        Information::ReactorState => Box::new(reactor_state(node_address).await?),
+        Information::NetworkName => Box::new(network_name(node_address).await?),
         Information::ConsensusValidatorChanges => {
-            print_response(consensus_validator_changes(node_address).await?)
+            Box::new(consensus_validator_changes(node_address).await?)
         }
         Information::BlockSynchronizerStatus => {
-            print_response(block_synchronizer_status(node_address).await?)
+            Box::new(block_synchronizer_status(node_address).await?)
         }
-        Information::AvailableBlockRange => {
-            print_response(available_block_range(node_address).await?)
-        }
-        Information::NextUpgrade => print_response_opt(next_upgrade(node_address).await?),
-        Information::ConsensusStatus => print_response(consensus_status(node_address).await?),
-        Information::ChainspecRawBytes => print_response(chainspec_raw_bytes(node_address).await?),
-        Information::NodeStatus => print_response(node_status(node_address).await?),
+        Information::AvailableBlockRange => Box::new(available_block_range(node_address).await?),
+        Information::NextUpgrade => Box::new(next_upgrade(node_address).await?),
+        Information::ConsensusStatus => Box::new(consensus_status(node_address).await?),
+        Information::ChainspecRawBytes => Box::new(chainspec_raw_bytes(node_address).await?),
+        Information::NodeStatus => Box::new(node_status(node_address).await?),
         Information::LatestSwitchBlockHeader => {
-            print_response_opt(latest_switch_block_header(node_address).await?)
+            Box::new(latest_switch_block_header(node_address).await?)
         }
         Information::Reward {
             era,
@@ -191,7 +184,7 @@ pub(super) async fn handle_information_request(
 
             match (era, hash, height) {
                 (Some(era), None, None) => {
-                    print_response_opt(if let Some(delegator_key) = delegator_key {
+                    Box::new(if let Some(delegator_key) = delegator_key {
                         delegator_reward_by_era(
                             node_address,
                             validator_key,
@@ -201,10 +194,10 @@ pub(super) async fn handle_information_request(
                         .await?
                     } else {
                         validator_reward_by_era(node_address, validator_key, era.into()).await?
-                    });
+                    })
                 }
                 (None, Some(hash), None) => {
-                    print_response_opt(if let Some(delegator_key) = delegator_key {
+                    Box::new(if let Some(delegator_key) = delegator_key {
                         delegator_reward_by_block_hash(
                             node_address,
                             validator_key,
@@ -219,10 +212,10 @@ pub(super) async fn handle_information_request(
                             Digest::from_hex(hash)?.into(),
                         )
                         .await?
-                    });
+                    })
                 }
                 (None, None, Some(height)) => {
-                    print_response_opt(if let Some(delegator_key) = delegator_key {
+                    Box::new(if let Some(delegator_key) = delegator_key {
                         delegator_reward_by_block_height(
                             node_address,
                             validator_key,
@@ -233,12 +226,14 @@ pub(super) async fn handle_information_request(
                     } else {
                         validator_reward_by_block_height(node_address, validator_key, height)
                             .await?
-                    });
+                    })
                 }
                 _ => return Err(Error::InvalidEraIdentifier),
-            };
+            }
         }
     };
+
+    print_response(response);
 
     Ok(())
 }
