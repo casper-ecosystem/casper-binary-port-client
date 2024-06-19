@@ -1,15 +1,11 @@
 use casper_binary_port::{
-    BinaryRequest, BinaryResponseAndRequest, GetRequest, GetTrieFullResult, GlobalStateQueryResult,
-    GlobalStateRequest, PayloadType,
+    BinaryResponseAndRequest, GetTrieFullResult, GlobalStateQueryResult, PayloadType,
 };
 use casper_binary_port_access::global_state_item_by_state_root_hash;
-use casper_types::{bytesrepr::FromBytes, Digest, GlobalStateIdentifier, Key, KeyTag, StoredValue};
+use casper_types::{bytesrepr::FromBytes, Digest, GlobalStateIdentifier, Key, StoredValue};
 use clap::Subcommand;
 
-use crate::{
-    error::Error,
-    utils::{print_response, EMPTY_STR},
-};
+use crate::{error::Error, utils::EMPTY_STR};
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum DictionaryIdentifier {

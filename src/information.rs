@@ -1,6 +1,3 @@
-use std::{fmt, io};
-
-use casper_binary_port::Uptime;
 use casper_binary_port_access::{
     available_block_range, block_header_by_hash, block_header_by_height, block_synchronizer_status,
     chainspec_raw_bytes, consensus_status, consensus_validator_changes,
@@ -10,11 +7,8 @@ use casper_binary_port_access::{
     signed_block_by_height, transaction_by_hash, uptime, validator_reward_by_block_hash,
     validator_reward_by_block_height, validator_reward_by_era,
 };
-use casper_types::{
-    AsymmetricType, BlockHash, DeployHash, Digest, Peers, PublicKey, TransactionHash,
-};
+use casper_types::{AsymmetricType, BlockHash, DeployHash, Digest, PublicKey, TransactionHash};
 use clap::{command, ArgGroup, Subcommand};
-use serde::Serialize;
 
 use crate::{error::Error, json_print::JsonPrintable, utils::print_response};
 
@@ -183,37 +177,28 @@ pub(super) async fn handle_information_request(
             };
 
             match (era, hash, height) {
-                (Some(era), None, None) => {
-                    Box::new(if let Some(delegator_key) = delegator_key {
-                        delegator_reward_by_era(
-                            node_address,
-                            validator_key,
-                            delegator_key,
-                            era.into(),
-                        )
+                (Some(era), None, None) => Box::new(if let Some(delegator_key) = delegator_key {
+                    delegator_reward_by_era(node_address, validator_key, delegator_key, era.into())
                         .await?
-                    } else {
-                        validator_reward_by_era(node_address, validator_key, era.into()).await?
-                    })
-                }
-                (None, Some(hash), None) => {
-                    Box::new(if let Some(delegator_key) = delegator_key {
-                        delegator_reward_by_block_hash(
-                            node_address,
-                            validator_key,
-                            delegator_key,
-                            Digest::from_hex(hash)?.into(),
-                        )
-                        .await?
-                    } else {
-                        validator_reward_by_block_hash(
-                            node_address,
-                            validator_key,
-                            Digest::from_hex(hash)?.into(),
-                        )
-                        .await?
-                    })
-                }
+                } else {
+                    validator_reward_by_era(node_address, validator_key, era.into()).await?
+                }),
+                (None, Some(hash), None) => Box::new(if let Some(delegator_key) = delegator_key {
+                    delegator_reward_by_block_hash(
+                        node_address,
+                        validator_key,
+                        delegator_key,
+                        Digest::from_hex(hash)?.into(),
+                    )
+                    .await?
+                } else {
+                    validator_reward_by_block_hash(
+                        node_address,
+                        validator_key,
+                        Digest::from_hex(hash)?.into(),
+                    )
+                    .await?
+                }),
                 (None, None, Some(height)) => {
                     Box::new(if let Some(delegator_key) = delegator_key {
                         delegator_reward_by_block_height(
