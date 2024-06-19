@@ -23,7 +23,7 @@ async fn connect_to_node(
 }
 
 fn encode_request(req: &BinaryRequest) -> Result<Vec<u8>, bytesrepr::Error> {
-    let header = BinaryRequestHeader::new(SUPPORTED_PROTOCOL_VERSION, req.tag());
+    let header = BinaryRequestHeader::new(SUPPORTED_PROTOCOL_VERSION, req.tag(), 0);
     let mut bytes = Vec::with_capacity(header.serialized_length() + req.serialized_length());
     header.write_bytes(&mut bytes)?;
     req.write_bytes(&mut bytes)?;
