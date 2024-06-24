@@ -21,6 +21,11 @@ pub(super) enum Commands {
     /// Retrieves data from the global state.
     #[clap(subcommand)]
     State(State),
+    /// Sends a transaction to the network for inclusion.
+    TryAcceptTransaction {
+        #[clap(long, short)]
+        transaction_file: String,
+    },
 }
 
 /// A request to the binary access interface.

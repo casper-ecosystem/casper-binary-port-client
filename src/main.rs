@@ -6,6 +6,7 @@ use information::handle_information_request;
 use json_print::JsonPrintable;
 use record::handle_record_request;
 use state::handle_state_request;
+use transaction::handle_transaction_request;
 use utils::print_response;
 
 mod args;
@@ -14,6 +15,7 @@ mod information;
 mod json_print;
 mod record;
 mod state;
+mod transaction;
 mod utils;
 
 #[tokio::main(flavor = "current_thread")]
@@ -24,6 +26,9 @@ async fn main() -> ExitCode {
         Commands::Information(req) => handle_information_request(&args.node_address, req).await,
         Commands::Record { id, key } => handle_record_request(&args.node_address, id, &key).await,
         Commands::State(req) => handle_state_request(&args.node_address, req).await,
+        Commands::TryAcceptTransaction { transaction_file } => {
+            handle_transaction_request(&args.node_address, &transaction_file).await
+        }
     };
 
     match result {

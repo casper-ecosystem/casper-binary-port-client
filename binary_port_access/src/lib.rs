@@ -7,10 +7,9 @@ use casper_binary_port::{
     NodeStatus, ReactorStateName, RecordId, RewardResponse, TransactionWithExecutionInfo, Uptime,
 };
 use casper_types::{
-    bytesrepr::{FromBytes, ToBytes},
-    AvailableBlockRange, BlockHash, BlockHeader, BlockIdentifier, BlockSynchronizerStatus,
-    ChainspecRawBytes, Digest, EraId, GlobalStateIdentifier, Key, NextUpgrade, Peers, PublicKey,
-    SignedBlock, TransactionHash,
+    bytesrepr::ToBytes, AvailableBlockRange, BlockHash, BlockHeader, BlockIdentifier,
+    BlockSynchronizerStatus, ChainspecRawBytes, Digest, EraId, GlobalStateIdentifier, Key,
+    NextUpgrade, Peers, PublicKey, SignedBlock, Transaction, TransactionHash,
 };
 
 mod communication;
@@ -300,4 +299,25 @@ pub async fn global_state_item_by_state_root_hash(
 
     let response = communication::send_request(node_address, request).await?;
     parse_response::<GlobalStateQueryResult>(response.response())
+}
+
+pub async fn try_accept_transaction(
+    node_address: &str,
+    transaction: Transaction,
+) -> Result<(), Error> {
+    let request = BinaryRequest::TryAcceptTransaction { transaction };
+    let response = communication::send_request(node_address, request).await?;
+
+    if response.response().is_success() {
+        Ok(())
+    } else {
+        let error_code = response.error_code();
+        Err(Error::TransactionFailed(format!(
+            "({}) {}",
+            error_code,
+            casper_binary_port::ErrorCode::try_from(error_code)
+                .unwrap()
+                .to_string()
+        )))
+    }
 }

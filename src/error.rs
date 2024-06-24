@@ -39,4 +39,6 @@ pub(crate) enum Error {
     InvalidEraIdentifier,
     #[error("need state root hash, block hash or block height")]
     InvalidStateIdentifier,
+    #[error(transparent)]
+    JsonSerialization(#[from] serde_json::Error),
 }
