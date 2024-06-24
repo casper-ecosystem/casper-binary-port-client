@@ -10,7 +10,7 @@ use casper_binary_port_access::{
 use casper_types::{AsymmetricType, BlockHash, DeployHash, Digest, PublicKey, TransactionHash};
 use clap::{command, ArgGroup, Subcommand};
 
-use crate::{error::Error, json_print::JsonPrintable, utils::print_response};
+use crate::{error::Error, json_print::JsonPrintable};
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum Information {
@@ -98,8 +98,8 @@ pub(crate) enum Information {
 pub(super) async fn handle_information_request(
     node_address: &str,
     req: Information,
-) -> Result<(), Error> {
-    let response: Box<dyn JsonPrintable> = match req {
+) -> Result<Box<dyn JsonPrintable>, Error> {
+    Ok(match req {
         Information::BlockHeader { hash, height } => Box::new(match (hash, height) {
             (None, None) => latest_block_header(node_address).await?,
             (None, Some(height)) => block_header_by_height(node_address, height).await?,
@@ -216,9 +216,5 @@ pub(super) async fn handle_information_request(
                 _ => return Err(Error::InvalidEraIdentifier),
             }
         }
-    };
-
-    print_response(response);
-
-    Ok(())
+    })
 }

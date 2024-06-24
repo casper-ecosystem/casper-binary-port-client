@@ -1,5 +1,6 @@
 use erased_serde::Serialize as ErasedSerialize;
 use serde::Serialize;
+
 pub(crate) trait JsonPrintable {
     fn as_serialize(&self) -> &dyn ErasedSerialize;
 }

@@ -1,17 +1,17 @@
 use casper_binary_port_access::read_record;
 
-use crate::{error::Error, utils::print_hex_payload};
+use crate::{error::Error, json_print::JsonPrintable};
 
 pub(super) async fn handle_record_request(
     node_address: &str,
     record_id: u16,
     key: &str,
-) -> Result<(), Error> {
+) -> Result<Box<dyn JsonPrintable>, Error> {
     let record_id = record_id.try_into().map_err(Error::Record)?;
     let key = hex::decode(key)?;
 
-    let response = read_record(node_address, record_id, key.as_slice()).await?;
-    print_hex_payload(response.as_slice());
+    let response: Box<dyn JsonPrintable> =
+        Box::new(read_record(node_address, record_id, key.as_slice()).await?);
 
-    Ok(())
+    Ok(response)
 }

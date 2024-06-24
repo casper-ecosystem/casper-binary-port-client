@@ -5,7 +5,7 @@ use casper_binary_port_access::global_state_item_by_state_root_hash;
 use casper_types::{bytesrepr::FromBytes, Digest, GlobalStateIdentifier, Key, StoredValue};
 use clap::Subcommand;
 
-use crate::{error::Error, utils::EMPTY_STR};
+use crate::{error::Error, json_print::JsonPrintable};
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum DictionaryIdentifier {
@@ -153,8 +153,11 @@ fn resolve_state_identifier(
     }
 }
 
-pub(super) async fn handle_state_request(node_address: &str, req: State) -> Result<(), Error> {
-    match req {
+pub(super) async fn handle_state_request(
+    node_address: &str,
+    req: State,
+) -> Result<Box<dyn JsonPrintable>, Error> {
+    Ok(match req {
         State::Item {
             state_root_hash,
             block_hash,
@@ -173,16 +176,15 @@ pub(super) async fn handle_state_request(node_address: &str, req: State) -> Resu
                 Some(state_identifier) => match state_identifier {
                     GlobalStateIdentifier::BlockHash(_) => todo!(),
                     GlobalStateIdentifier::BlockHeight(_) => todo!(),
-                    GlobalStateIdentifier::StateRootHash(state_root_hash) => {
-                        let global_state_query_result = global_state_item_by_state_root_hash(
+                    GlobalStateIdentifier::StateRootHash(state_root_hash) => Box::new(
+                        global_state_item_by_state_root_hash(
                             node_address,
                             state_root_hash,
                             base_key,
                             vec![],
                         )
-                        .await?;
-                        //print_response(global_state_query_result);
-                    }
+                        .await?,
+                    ),
                 },
                 None => todo!(),
             }
@@ -200,9 +202,7 @@ pub(super) async fn handle_state_request(node_address: &str, req: State) -> Resu
             block_height,
             dictionary_identifier,
         } => todo!(),
-    }
-
-    Ok(())
+    })
 
     /*
     match req {
@@ -297,7 +297,7 @@ fn handle_state_response(response: &BinaryResponseAndRequest) {
     }
 
     let Some(tag) = response.response().returned_data_type_tag() else {
-        println!("{EMPTY_STR}");
+        println!("EMPTY_STR");
         return;
     };
 
@@ -337,7 +337,7 @@ fn handle_state_response(response: &BinaryResponseAndRequest) {
                     println!("{}", hex::encode(bytes));
                 }
                 None => {
-                    println!("{EMPTY_STR}");
+                    println!("EMPTY_STR");
                 }
             }
         }

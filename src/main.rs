@@ -1,10 +1,12 @@
-use std::process::ExitCode;
+use std::{process::ExitCode, result};
 
 use args::Commands;
 use clap::Parser;
 use information::handle_information_request;
+use json_print::JsonPrintable;
 use record::handle_record_request;
 use state::handle_state_request;
+use utils::print_response;
 
 mod args;
 mod error;
@@ -24,10 +26,14 @@ async fn main() -> ExitCode {
         Commands::State(req) => handle_state_request(&args.node_address, req).await,
     };
 
-    if let Err(err) = result {
-        eprintln!("{err}");
-        return ExitCode::FAILURE;
+    match result {
+        Ok(response) => {
+            print_response(response);
+            return ExitCode::SUCCESS;
+        }
+        Err(err) => {
+            eprintln!("{err}");
+            return ExitCode::FAILURE;
+        }
     }
-
-    return ExitCode::SUCCESS;
 }
