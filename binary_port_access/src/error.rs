@@ -11,6 +11,6 @@ pub enum Error {
     BinaryPort(#[from] casper_binary_port::Error),
     #[error("failed to handle response: {0}")]
     Response(String),
-    #[error("transaction failed: {0}")]
-    TransactionFailed(String),
+    #[error("request failed: {0}")]
+    RequestFailed(String),
 }

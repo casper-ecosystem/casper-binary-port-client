@@ -6,7 +6,7 @@ use information::handle_information_request;
 use json_print::JsonPrintable;
 use record::handle_record_request;
 use state::handle_state_request;
-use transaction::handle_transaction_request;
+use transaction::{handle_speculative_execution_request, handle_try_accept_transaction_request};
 use utils::print_response;
 
 mod args;
@@ -27,7 +27,10 @@ async fn main() -> ExitCode {
         Commands::Record { id, key } => handle_record_request(&args.node_address, id, &key).await,
         Commands::State(req) => handle_state_request(&args.node_address, req).await,
         Commands::TryAcceptTransaction { transaction_file } => {
-            handle_transaction_request(&args.node_address, &transaction_file).await
+            handle_try_accept_transaction_request(&args.node_address, &transaction_file).await
+        }
+        Commands::TrySpeculativeExecution { transaction_file } => {
+            handle_speculative_execution_request(&args.node_address, &transaction_file).await
         }
     };
 

@@ -26,6 +26,11 @@ pub(super) enum Commands {
         #[clap(long, short)]
         transaction_file: String,
     },
+    /// Sends a transaction to the network for speculative execution.
+    TrySpeculativeExecution {
+        #[clap(long, short)]
+        transaction_file: String,
+    },
 }
 
 /// A request to the binary access interface.

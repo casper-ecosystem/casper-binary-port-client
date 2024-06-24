@@ -1,6 +1,6 @@
 use casper_binary_port::{
-    BinaryRequest, EraIdentifier, GetRequest, InformationRequest, InformationRequestTag, RecordId,
-    RewardResponse,
+    BinaryRequest, BinaryResponseAndRequest, EraIdentifier, GetRequest, InformationRequest,
+    InformationRequestTag, RecordId, RewardResponse,
 };
 use casper_types::{bytesrepr::ToBytes, PublicKey};
 
@@ -42,6 +42,7 @@ pub(crate) async fn delegator_reward_by_era_identifier(
         .as_slice(),
     )?;
     let response = communication::send_request(node_address, request).await?;
+    check_error_code(&response)?;
     parse_response::<RewardResponse>(response.response())
 }
 
@@ -62,4 +63,19 @@ pub(crate) async fn validator_reward_by_era_identifier(
     )?;
     let response = communication::send_request(node_address, request).await?;
     parse_response::<RewardResponse>(response.response())
+}
+
+pub(crate) fn check_error_code(response: &BinaryResponseAndRequest) -> Result<(), Error> {
+    if response.response().is_success() {
+        Ok(())
+    } else {
+        let error_code = response.error_code();
+        Err(Error::RequestFailed(format!(
+            "({}) {}",
+            error_code,
+            casper_binary_port::ErrorCode::try_from(error_code)
+                .unwrap()
+                .to_string()
+        )))
+    }
 }
