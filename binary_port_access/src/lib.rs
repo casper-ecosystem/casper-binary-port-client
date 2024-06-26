@@ -19,7 +19,8 @@ pub(crate) mod utils;
 
 pub use error::Error;
 use utils::{
-    check_error_code, delegator_reward_by_era_identifier, validator_reward_by_era_identifier,
+    check_error_code, delegator_reward_by_era_identifier, global_state_item_by_state_identifier,
+    validator_reward_by_era_identifier,
 };
 
 pub async fn latest_switch_block_header(node_address: &str) -> Result<Option<BlockHeader>, Error> {
@@ -314,16 +315,17 @@ pub async fn global_state_item_by_state_root_hash(
     path: Vec<String>,
 ) -> Result<Option<GlobalStateQueryResult>, Error> {
     let state_identifier = GlobalStateIdentifier::StateRootHash(state_root_hash);
-    let global_state_request = GlobalStateRequest::Item {
-        state_identifier: Some(state_identifier),
-        base_key: key,
-        path,
-    };
-    let request = BinaryRequest::Get(GetRequest::State(Box::new(global_state_request)));
+    global_state_item_by_state_identifier(node_address, state_identifier, key, path).await
+}
 
-    let response = communication::send_request(node_address, request).await?;
-    check_error_code(&response)?;
-    parse_response::<GlobalStateQueryResult>(response.response())
+pub async fn global_state_item_by_block_hash(
+    node_address: &str,
+    block_hash: BlockHash,
+    key: Key,
+    path: Vec<String>,
+) -> Result<Option<GlobalStateQueryResult>, Error> {
+    let state_identifier = GlobalStateIdentifier::BlockHash(block_hash);
+    global_state_item_by_state_identifier(node_address, state_identifier, key, path).await
 }
 
 pub async fn try_accept_transaction(

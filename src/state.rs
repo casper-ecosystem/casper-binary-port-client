@@ -1,7 +1,9 @@
 use casper_binary_port::{
     BinaryResponseAndRequest, GetTrieFullResult, GlobalStateQueryResult, PayloadType,
 };
-use casper_binary_port_access::global_state_item_by_state_root_hash;
+use casper_binary_port_access::{
+    global_state_item_by_block_hash, global_state_item_by_state_root_hash,
+};
 use casper_types::{bytesrepr::FromBytes, Digest, GlobalStateIdentifier, Key, StoredValue};
 use clap::Subcommand;
 
@@ -166,7 +168,7 @@ pub(super) async fn handle_state_request(
             path,
         } => {
             if path.is_some() {
-                unimplemented!("Path is not supported yet");
+                unimplemented!("Path in 'item' request is not supported yet");
             }
             let state_identifier =
                 resolve_state_identifier(state_root_hash, block_hash, block_height)?;
@@ -174,7 +176,10 @@ pub(super) async fn handle_state_request(
 
             match state_identifier {
                 Some(state_identifier) => match state_identifier {
-                    GlobalStateIdentifier::BlockHash(_) => todo!(),
+                    GlobalStateIdentifier::BlockHash(block_hash) => Box::new(
+                        global_state_item_by_block_hash(node_address, block_hash, base_key, vec![])
+                            .await?,
+                    ),
                     GlobalStateIdentifier::BlockHeight(_) => todo!(),
                     GlobalStateIdentifier::StateRootHash(state_root_hash) => Box::new(
                         global_state_item_by_state_root_hash(

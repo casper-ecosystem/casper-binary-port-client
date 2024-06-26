@@ -1,8 +1,8 @@
 use casper_binary_port::{
-    BinaryRequest, BinaryResponseAndRequest, EraIdentifier, GetRequest, InformationRequest,
-    InformationRequestTag, RecordId, RewardResponse,
+    BinaryRequest, BinaryResponseAndRequest, EraIdentifier, GetRequest, GlobalStateQueryResult,
+    GlobalStateRequest, InformationRequest, InformationRequestTag, RecordId, RewardResponse,
 };
-use casper_types::{bytesrepr::ToBytes, PublicKey};
+use casper_types::{bytesrepr::ToBytes, GlobalStateIdentifier, Key, PublicKey};
 
 use crate::{
     communication::{self, parse_response},
@@ -63,6 +63,24 @@ pub(crate) async fn validator_reward_by_era_identifier(
     )?;
     let response = communication::send_request(node_address, request).await?;
     parse_response::<RewardResponse>(response.response())
+}
+
+pub(crate) async fn global_state_item_by_state_identifier(
+    node_address: &str,
+    global_state_identifier: GlobalStateIdentifier,
+    key: Key,
+    path: Vec<String>,
+) -> Result<Option<GlobalStateQueryResult>, Error> {
+    let global_state_request = GlobalStateRequest::Item {
+        state_identifier: Some(global_state_identifier),
+        base_key: key,
+        path,
+    };
+    let request = BinaryRequest::Get(GetRequest::State(Box::new(global_state_request)));
+
+    let response = communication::send_request(node_address, request).await?;
+    check_error_code(&response)?;
+    parse_response::<GlobalStateQueryResult>(response.response())
 }
 
 pub(crate) fn check_error_code(response: &BinaryResponseAndRequest) -> Result<(), Error> {
