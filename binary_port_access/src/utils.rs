@@ -67,12 +67,12 @@ pub(crate) async fn validator_reward_by_era_identifier(
 
 pub(crate) async fn global_state_item_by_state_identifier(
     node_address: &str,
-    global_state_identifier: GlobalStateIdentifier,
+    global_state_identifier: Option<GlobalStateIdentifier>,
     key: Key,
     path: Vec<String>,
 ) -> Result<Option<GlobalStateQueryResult>, Error> {
     let global_state_request = GlobalStateRequest::Item {
-        state_identifier: Some(global_state_identifier),
+        state_identifier: global_state_identifier,
         base_key: key,
         path,
     };

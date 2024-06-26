@@ -308,6 +308,14 @@ pub async fn read_record(
     Ok(response.response().payload().into())
 }
 
+pub async fn global_state_item(
+    node_address: &str,
+    key: Key,
+    path: Vec<String>,
+) -> Result<Option<GlobalStateQueryResult>, Error> {
+    global_state_item_by_state_identifier(node_address, None, key, path).await
+}
+
 pub async fn global_state_item_by_state_root_hash(
     node_address: &str,
     state_root_hash: Digest,
@@ -315,7 +323,7 @@ pub async fn global_state_item_by_state_root_hash(
     path: Vec<String>,
 ) -> Result<Option<GlobalStateQueryResult>, Error> {
     let state_identifier = GlobalStateIdentifier::StateRootHash(state_root_hash);
-    global_state_item_by_state_identifier(node_address, state_identifier, key, path).await
+    global_state_item_by_state_identifier(node_address, Some(state_identifier), key, path).await
 }
 
 pub async fn global_state_item_by_block_hash(
@@ -325,7 +333,7 @@ pub async fn global_state_item_by_block_hash(
     path: Vec<String>,
 ) -> Result<Option<GlobalStateQueryResult>, Error> {
     let state_identifier = GlobalStateIdentifier::BlockHash(block_hash);
-    global_state_item_by_state_identifier(node_address, state_identifier, key, path).await
+    global_state_item_by_state_identifier(node_address, Some(state_identifier), key, path).await
 }
 
 pub async fn global_state_item_by_block_height(
@@ -335,7 +343,7 @@ pub async fn global_state_item_by_block_height(
     path: Vec<String>,
 ) -> Result<Option<GlobalStateQueryResult>, Error> {
     let state_identifier = GlobalStateIdentifier::BlockHeight(block_height);
-    global_state_item_by_state_identifier(node_address, state_identifier, key, path).await
+    global_state_item_by_state_identifier(node_address, Some(state_identifier), key, path).await
 }
 
 pub async fn try_accept_transaction(
