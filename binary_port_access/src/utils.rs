@@ -91,7 +91,8 @@ pub(crate) fn check_error_code(response: &BinaryResponseAndRequest) -> Result<()
         Err(Error::Response(format!(
             "({}) {}",
             error_code,
-            casper_binary_port::ErrorCode::try_from(error_code).unwrap()
+            casper_binary_port::ErrorCode::try_from(error_code)
+                .map_or("Unknown error code".to_string(), |code| code.to_string())
         )))
     }
 }
