@@ -2,9 +2,9 @@ use communication::parse_response;
 use thiserror::Error;
 
 use casper_binary_port::{
-    BinaryRequest, ConsensusStatus, ConsensusValidatorChanges, EraIdentifier, GetRequest,
-    GlobalStateQueryResult, GlobalStateRequest, InformationRequestTag, LastProgress, NetworkName,
-    NodeStatus, ReactorStateName, RecordId, RewardResponse, SpeculativeExecutionResult,
+    BinaryRequest, ConsensusStatus, ConsensusValidatorChanges, EraIdentifier,
+    GlobalStateQueryResult, InformationRequestTag, LastProgress, NetworkName, NodeStatus,
+    ReactorStateName, RecordId, RewardResponse, SpeculativeExecutionResult,
     TransactionWithExecutionInfo, Uptime,
 };
 use casper_types::{

@@ -11,8 +11,6 @@ pub(crate) enum Error {
     BinaryPort(#[from] casper_binary_port::Error),
     #[error(transparent)]
     Io(#[from] std::io::Error),
-    #[error("failed to handle response: {0}")]
-    Response(String),
     #[error("unknown record id: {0:?}")]
     Record(UnknownRecordId),
     #[error(transparent)]
@@ -21,8 +19,6 @@ pub(crate) enum Error {
     Digest(#[from] DigestError),
     #[error("failed to parse key: {0}")]
     KeyFromStr(KeyFromStrError),
-    #[error("invalid key tag: {0}")]
-    InvalidKeyTag(u8),
     #[error(transparent)]
     BinaryPortAccess(#[from] casper_binary_port_access::Error),
     #[error("need either a block hash or block height")]

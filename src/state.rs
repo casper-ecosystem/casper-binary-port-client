@@ -1,11 +1,8 @@
-use casper_binary_port::{
-    BinaryResponseAndRequest, GetTrieFullResult, GlobalStateQueryResult, PayloadType,
-};
 use casper_binary_port_access::{
     global_state_item, global_state_item_by_block_hash, global_state_item_by_block_height,
     global_state_item_by_state_root_hash,
 };
-use casper_types::{bytesrepr::FromBytes, Digest, GlobalStateIdentifier, Key, StoredValue};
+use casper_types::{Digest, GlobalStateIdentifier, Key};
 use clap::Subcommand;
 
 use crate::{error::Error, json_print::JsonPrintable};
@@ -204,75 +201,17 @@ pub(super) async fn handle_state_request(
             }
         }
         State::AllItems {
-            state_root_hash,
-            block_hash,
-            block_height,
-            key_tag,
+            state_root_hash: _,
+            block_hash: _,
+            block_height: _,
+            key_tag: _,
         } => unimplemented!("State::AllItems is not supported yet"),
-        State::Trie { digest } => unimplemented!("State::Trie is not supported yet"),
+        State::Trie { digest: _ } => unimplemented!("State::Trie is not supported yet"),
         State::DictionaryItem {
-            state_root_hash,
-            block_hash,
-            block_height,
-            dictionary_identifier,
+            state_root_hash: _,
+            block_hash: _,
+            block_height: _,
+            dictionary_identifier: _,
         } => unimplemented!("State::DictionaryItem is not supported yet"),
     })
-}
-
-fn handle_state_response(response: &BinaryResponseAndRequest) {
-    if !response.response().is_success() {
-        let error_code = response.response().error_code();
-        let error = casper_binary_port::ErrorCode::try_from(error_code)
-            .expect("unknown binary port error code");
-        println!("Error: {} (code={})", error, error_code);
-        return;
-    }
-
-    let Some(tag) = response.response().returned_data_type_tag() else {
-        println!("EMPTY_STR");
-        return;
-    };
-
-    match tag {
-        t if t == PayloadType::GlobalStateQueryResult as u8 => {
-            let (result, remainder): (GlobalStateQueryResult, _) =
-                FromBytes::from_bytes(response.response().payload()).expect("should deserialize");
-            assert!(remainder.is_empty(), "should have no remaining bytes");
-
-            let (value, proof) = result.into_inner();
-            println!("Value:");
-            println!("{value:#?}");
-            println!("Proof:");
-            println!("{proof:#?}");
-        }
-        t if t == PayloadType::StoredValues as u8 => {
-            let (result, remainder): (Vec<StoredValue>, _) =
-                FromBytes::from_bytes(response.response().payload()).expect("should deserialize");
-            assert!(remainder.is_empty(), "should have no remaining bytes");
-            println!("{} stored values:", result.len());
-            for (index, value) in result.into_iter().enumerate() {
-                println!("{}", index + 1);
-                println!("{value:#?}");
-            }
-        }
-        t if t == PayloadType::GetTrieFullResult as u8 => {
-            let (result, remainder): (GetTrieFullResult, _) =
-                FromBytes::from_bytes(response.response().payload()).expect("should deserialize");
-            assert!(remainder.is_empty(), "should have no remaining bytes");
-
-            let result = result.into_inner();
-            match result {
-                Some(bytes) => {
-                    println!("Length (bytes):");
-                    println!("{}", bytes.len());
-                    println!("Bytes:");
-                    println!("{}", hex::encode(bytes));
-                }
-                None => {
-                    println!("EMPTY_STR");
-                }
-            }
-        }
-        _ => panic!("unexpected payload type: {}", tag),
-    }
 }

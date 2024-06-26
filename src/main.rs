@@ -1,9 +1,8 @@
-use std::{process::ExitCode, result};
+use std::process::ExitCode;
 
 use args::Commands;
 use clap::Parser;
 use information::handle_information_request;
-use json_print::JsonPrintable;
 use record::handle_record_request;
 use state::handle_state_request;
 use transaction::{handle_speculative_execution_request, handle_try_accept_transaction_request};
