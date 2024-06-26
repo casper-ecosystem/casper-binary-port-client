@@ -2,7 +2,8 @@ use casper_binary_port::{
     BinaryResponseAndRequest, GetTrieFullResult, GlobalStateQueryResult, PayloadType,
 };
 use casper_binary_port_access::{
-    global_state_item_by_block_hash, global_state_item_by_state_root_hash,
+    global_state_item_by_block_hash, global_state_item_by_block_height,
+    global_state_item_by_state_root_hash,
 };
 use casper_types::{bytesrepr::FromBytes, Digest, GlobalStateIdentifier, Key, StoredValue};
 use clap::Subcommand;
@@ -180,7 +181,15 @@ pub(super) async fn handle_state_request(
                         global_state_item_by_block_hash(node_address, block_hash, base_key, vec![])
                             .await?,
                     ),
-                    GlobalStateIdentifier::BlockHeight(_) => todo!(),
+                    GlobalStateIdentifier::BlockHeight(block_height) => Box::new(
+                        global_state_item_by_block_height(
+                            node_address,
+                            block_height,
+                            base_key,
+                            vec![],
+                        )
+                        .await?,
+                    ),
                     GlobalStateIdentifier::StateRootHash(state_root_hash) => Box::new(
                         global_state_item_by_state_root_hash(
                             node_address,

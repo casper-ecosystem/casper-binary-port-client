@@ -328,6 +328,16 @@ pub async fn global_state_item_by_block_hash(
     global_state_item_by_state_identifier(node_address, state_identifier, key, path).await
 }
 
+pub async fn global_state_item_by_block_height(
+    node_address: &str,
+    block_height: u64,
+    key: Key,
+    path: Vec<String>,
+) -> Result<Option<GlobalStateQueryResult>, Error> {
+    let state_identifier = GlobalStateIdentifier::BlockHeight(block_height);
+    global_state_item_by_state_identifier(node_address, state_identifier, key, path).await
+}
+
 pub async fn try_accept_transaction(
     node_address: &str,
     transaction: Transaction,
