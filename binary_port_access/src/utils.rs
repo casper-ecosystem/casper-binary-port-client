@@ -88,7 +88,7 @@ pub(crate) fn check_error_code(response: &BinaryResponseAndRequest) -> Result<()
         Ok(())
     } else {
         let error_code = response.error_code();
-        Err(Error::RequestFailed(format!(
+        Err(Error::Response(format!(
             "({}) {}",
             error_code,
             casper_binary_port::ErrorCode::try_from(error_code).unwrap()
