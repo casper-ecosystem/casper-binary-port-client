@@ -1,3 +1,6 @@
+#![deny(missing_docs)]
+//! This crate provides a high-level API for interacting with a Casper node's binary port interface.
+
 use communication::parse_response;
 use thiserror::Error;
 
@@ -23,6 +26,7 @@ use utils::{
     validator_reward_by_era_identifier,
 };
 
+/// Returns the latest switch block header.
 pub async fn latest_switch_block_header(node_address: &str) -> Result<Option<BlockHeader>, Error> {
     let request =
         utils::make_information_get_request(InformationRequestTag::LatestSwitchBlockHeader, &[])?;
@@ -31,6 +35,7 @@ pub async fn latest_switch_block_header(node_address: &str) -> Result<Option<Blo
     parse_response::<BlockHeader>(response.response())
 }
 
+/// Returns the latest block header.
 pub async fn latest_block_header(node_address: &str) -> Result<Option<BlockHeader>, Error> {
     let block_id: Option<BlockIdentifier> = None;
     let request = utils::make_information_get_request(
@@ -42,6 +47,7 @@ pub async fn latest_block_header(node_address: &str) -> Result<Option<BlockHeade
     parse_response::<BlockHeader>(response.response())
 }
 
+/// Returns the block header at the given height.
 pub async fn block_header_by_height(
     node_address: &str,
     height: u64,
@@ -56,6 +62,7 @@ pub async fn block_header_by_height(
     parse_response::<BlockHeader>(response.response())
 }
 
+/// Returns the block header with the given hash.
 pub async fn block_header_by_hash(
     node_address: &str,
     hash: BlockHash,
@@ -70,6 +77,7 @@ pub async fn block_header_by_hash(
     parse_response::<BlockHeader>(response.response())
 }
 
+/// Returns the latest block along with signatures.
 pub async fn latest_signed_block(node_address: &str) -> Result<Option<SignedBlock>, Error> {
     let block_id: Option<BlockIdentifier> = None;
     let request = utils::make_information_get_request(
@@ -81,6 +89,7 @@ pub async fn latest_signed_block(node_address: &str) -> Result<Option<SignedBloc
     parse_response::<SignedBlock>(response.response())
 }
 
+/// Returns the block at the given height along with signatures.
 pub async fn signed_block_by_height(
     node_address: &str,
     height: u64,
@@ -95,6 +104,7 @@ pub async fn signed_block_by_height(
     parse_response::<SignedBlock>(response.response())
 }
 
+/// Returns the block with the given hash along with signatures.
 pub async fn signed_block_by_hash(
     node_address: &str,
     hash: BlockHash,
@@ -109,6 +119,9 @@ pub async fn signed_block_by_hash(
     parse_response::<SignedBlock>(response.response())
 }
 
+/// Returns the transaction with the given hash. If `with_finalized_approvals` is `false`, the
+/// approvals that were originally received by the node are returned. Otherwise, the substituted
+/// approvals are returned.
 pub async fn transaction_by_hash(
     node_address: &str,
     hash: TransactionHash,
@@ -127,6 +140,7 @@ pub async fn transaction_by_hash(
     parse_response::<TransactionWithExecutionInfo>(response.response())
 }
 
+/// Returns the peer list.
 pub async fn peers(node_address: &str) -> Result<Peers, Error> {
     let request = utils::make_information_get_request(InformationRequestTag::Peers, &[])?;
     let response = communication::send_request(node_address, request).await?;
@@ -135,6 +149,7 @@ pub async fn peers(node_address: &str) -> Result<Peers, Error> {
     peers.ok_or_else(|| Error::Response("unable to read peers".to_string()))
 }
 
+/// Returns the node uptime.
 pub async fn uptime(node_address: &str) -> Result<Uptime, Error> {
     let request = utils::make_information_get_request(InformationRequestTag::Uptime, &[])?;
     let response = communication::send_request(node_address, request).await?;
@@ -143,6 +158,7 @@ pub async fn uptime(node_address: &str) -> Result<Uptime, Error> {
     uptime.ok_or_else(|| Error::Response("unable to read uptime".to_string()))
 }
 
+/// Returns the last progress as recorded by the node.
 pub async fn last_progress(node_address: &str) -> Result<LastProgress, Error> {
     let request = utils::make_information_get_request(InformationRequestTag::LastProgress, &[])?;
     let response = communication::send_request(node_address, request).await?;
@@ -151,6 +167,7 @@ pub async fn last_progress(node_address: &str) -> Result<LastProgress, Error> {
     last_progress.ok_or_else(|| Error::Response("unable to read last progress".to_string()))
 }
 
+/// Returns the current reactor state.
 pub async fn reactor_state(node_address: &str) -> Result<ReactorStateName, Error> {
     let request = utils::make_information_get_request(InformationRequestTag::ReactorState, &[])?;
     let response = communication::send_request(node_address, request).await?;
@@ -159,6 +176,7 @@ pub async fn reactor_state(node_address: &str) -> Result<ReactorStateName, Error
     reactor_state.ok_or_else(|| Error::Response("unable to read last reactor state".to_string()))
 }
 
+/// Returns the network (chain) name.
 pub async fn network_name(node_address: &str) -> Result<NetworkName, Error> {
     let request = utils::make_information_get_request(InformationRequestTag::NetworkName, &[])?;
     let response = communication::send_request(node_address, request).await?;
@@ -167,6 +185,7 @@ pub async fn network_name(node_address: &str) -> Result<NetworkName, Error> {
     network_name.ok_or_else(|| Error::Response("unable to read last network name".to_string()))
 }
 
+/// Returns the last consensus validator changes.
 pub async fn consensus_validator_changes(
     node_address: &str,
 ) -> Result<ConsensusValidatorChanges, Error> {
@@ -181,6 +200,7 @@ pub async fn consensus_validator_changes(
     })
 }
 
+/// Returns the status of the block synchronizer.
 pub async fn block_synchronizer_status(
     node_address: &str,
 ) -> Result<BlockSynchronizerStatus, Error> {
@@ -193,6 +213,7 @@ pub async fn block_synchronizer_status(
         .ok_or_else(|| Error::Response("unable to read last block synchronizer status".to_string()))
 }
 
+/// Returns the available block range.
 pub async fn available_block_range(node_address: &str) -> Result<AvailableBlockRange, Error> {
     let request =
         utils::make_information_get_request(InformationRequestTag::AvailableBlockRange, &[])?;
@@ -203,6 +224,7 @@ pub async fn available_block_range(node_address: &str) -> Result<AvailableBlockR
         .ok_or_else(|| Error::Response("unable to read last available block range".to_string()))
 }
 
+/// Returns the information about the next upgrade point.
 pub async fn next_upgrade(node_address: &str) -> Result<Option<NextUpgrade>, Error> {
     let request = utils::make_information_get_request(InformationRequestTag::NextUpgrade, &[])?;
     let response = communication::send_request(node_address, request).await?;
@@ -210,6 +232,7 @@ pub async fn next_upgrade(node_address: &str) -> Result<Option<NextUpgrade>, Err
     parse_response::<NextUpgrade>(response.response())
 }
 
+/// Returns the current status of the consensus.
 pub async fn consensus_status(node_address: &str) -> Result<ConsensusStatus, Error> {
     let request = utils::make_information_get_request(InformationRequestTag::ConsensusStatus, &[])?;
     let response = communication::send_request(node_address, request).await?;
@@ -219,6 +242,8 @@ pub async fn consensus_status(node_address: &str) -> Result<ConsensusStatus, Err
         .ok_or_else(|| Error::Response("unable to read last consensus status".to_string()))
 }
 
+/// Returns the raw bytes of the current chainspec along with the optional information about the
+/// genesis accounts and global state configuration files.
 pub async fn chainspec_raw_bytes(node_address: &str) -> Result<ChainspecRawBytes, Error> {
     let request =
         utils::make_information_get_request(InformationRequestTag::ChainspecRawBytes, &[])?;
@@ -229,6 +254,7 @@ pub async fn chainspec_raw_bytes(node_address: &str) -> Result<ChainspecRawBytes
         .ok_or_else(|| Error::Response("unable to read last chainspec raw bytes".to_string()))
 }
 
+/// Returns the node status.
 pub async fn node_status(node_address: &str) -> Result<NodeStatus, Error> {
     let request = utils::make_information_get_request(InformationRequestTag::NodeStatus, &[])?;
     let response = communication::send_request(node_address, request).await?;
@@ -237,6 +263,7 @@ pub async fn node_status(node_address: &str) -> Result<NodeStatus, Error> {
     node_status.ok_or_else(|| Error::Response("unable to read last node status".to_string()))
 }
 
+/// Returns the reward for the given validator at the given era.
 pub async fn validator_reward_by_era(
     node_address: &str,
     validator_key: PublicKey,
@@ -246,6 +273,7 @@ pub async fn validator_reward_by_era(
     validator_reward_by_era_identifier(node_address, validator_key, era_identifier).await
 }
 
+/// Returns the reward for the given validator at the era containing the block at given height.
 pub async fn validator_reward_by_block_height(
     node_address: &str,
     validator_key: PublicKey,
@@ -255,6 +283,7 @@ pub async fn validator_reward_by_block_height(
     validator_reward_by_era_identifier(node_address, validator_key, era_identifier).await
 }
 
+/// Returns the reward for the given validator at the era containing the block with given hash.
 pub async fn validator_reward_by_block_hash(
     node_address: &str,
     validator_key: PublicKey,
@@ -264,6 +293,7 @@ pub async fn validator_reward_by_block_hash(
     validator_reward_by_era_identifier(node_address, validator_key, era_identifier).await
 }
 
+/// Returns the reward for the given delegator at the given era.
 pub async fn delegator_reward_by_era(
     node_address: &str,
     validator_key: PublicKey,
@@ -275,6 +305,7 @@ pub async fn delegator_reward_by_era(
         .await
 }
 
+/// Returns the reward for the given delegator at the era containing the block at given height.
 pub async fn delegator_reward_by_block_height(
     node_address: &str,
     validator_key: PublicKey,
@@ -286,6 +317,7 @@ pub async fn delegator_reward_by_block_height(
         .await
 }
 
+/// Returns the reward for the given delegator at the era containing the block with given hash.
 pub async fn delegator_reward_by_block_hash(
     node_address: &str,
     validator_key: PublicKey,
@@ -297,6 +329,20 @@ pub async fn delegator_reward_by_block_hash(
         .await
 }
 
+// TODO: Add function for getting the validator and delegator reward w/o specifying the era identifier.
+
+/// Returns the record with a given key from the given database. Response contains raw bytes
+/// as obtained from the node storage.
+/// | record id | database                      |
+/// |-----------|-------------------------------|
+/// | 0         | BlockHeader                   |
+/// | 1         | BlockBody                     |
+/// | 2         | ApprovalsHashes               |
+/// | 3         | BlockMetadata                 |
+/// | 4         | Transaction                   |
+/// | 5         | ExecutionResult               |
+/// | 6         | Transfer                      |
+/// | 7         | FinalizedTransactionApprovals |
 pub async fn read_record(
     node_address: &str,
     record_id: RecordId,
@@ -308,6 +354,7 @@ pub async fn read_record(
     Ok(response.response().payload().into())
 }
 
+/// Returns an item at the given key from the global state. The most recent state root hash is used to obtain the data.
 pub async fn global_state_item(
     node_address: &str,
     key: Key,
@@ -316,6 +363,8 @@ pub async fn global_state_item(
     global_state_item_by_state_identifier(node_address, None, key, path).await
 }
 
+/// Returns an item at the given key from the global state. The given state root hash is used
+/// to obtain the data.
 pub async fn global_state_item_by_state_root_hash(
     node_address: &str,
     state_root_hash: Digest,
@@ -326,6 +375,8 @@ pub async fn global_state_item_by_state_root_hash(
     global_state_item_by_state_identifier(node_address, Some(state_identifier), key, path).await
 }
 
+/// Returns an item at the given key from the global state. The state root hash associated with
+/// the block with given hash is used to obtain the data.
 pub async fn global_state_item_by_block_hash(
     node_address: &str,
     block_hash: BlockHash,
@@ -336,6 +387,8 @@ pub async fn global_state_item_by_block_hash(
     global_state_item_by_state_identifier(node_address, Some(state_identifier), key, path).await
 }
 
+/// Returns an item at the given key from the global state. The state root hash associated with
+/// the block with given height is used to obtain the data.
 pub async fn global_state_item_by_block_height(
     node_address: &str,
     block_height: u64,
@@ -346,6 +399,7 @@ pub async fn global_state_item_by_block_height(
     global_state_item_by_state_identifier(node_address, Some(state_identifier), key, path).await
 }
 
+/// Sends a transaction to the node for inclusion.
 pub async fn try_accept_transaction(
     node_address: &str,
     transaction: Transaction,
@@ -355,6 +409,7 @@ pub async fn try_accept_transaction(
     check_error_code(&response)
 }
 
+/// Sends a transaction to the node for speculative execution.
 pub async fn try_speculative_execution(
     node_address: &str,
     transaction: Transaction,
