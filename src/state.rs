@@ -208,97 +208,15 @@ pub(super) async fn handle_state_request(
             block_hash,
             block_height,
             key_tag,
-        } => todo!(),
-        State::Trie { digest } => todo!(),
+        } => unimplemented!("State::AllItems is not supported yet"),
+        State::Trie { digest } => unimplemented!("State::Trie is not supported yet"),
         State::DictionaryItem {
             state_root_hash,
             block_hash,
             block_height,
             dictionary_identifier,
-        } => todo!(),
+        } => unimplemented!("State::DictionaryItem is not supported yet"),
     })
-
-    /*
-    match req {
-        State::Item {
-            state_root_hash,
-            block_hash,
-            block_height,
-            base_key,
-            path,
-        } => {
-            if path.is_some() {
-                unimplemented!("Path is not supported yet");
-            }
-            let state_identifier =
-                resolve_state_identifier(state_root_hash, block_hash, block_height)?;
-            let base_key = Key::from_formatted_str(&base_key).map_err(Error::KeyFromStr)?;
-
-            match state_identifier {
-                Some(state_identifier) => match state_identifier {
-                    GlobalStateIdentifier::BlockHash(_) => todo!(),
-                    GlobalStateIdentifier::BlockHeight(_) => todo!(),
-                    GlobalStateIdentifier::StateRootHash(state_root_hash) => {
-                        global_state_item_by_state_root_hash(
-                            node_address,
-                            state_root_hash,
-                            base_key,
-                            path,
-                        )
-                        .await?
-                    }
-                },
-                None => todo!(),
-            }
-        }
-        State::AllItems {
-            state_root_hash,
-            block_hash,
-            block_height,
-            key_tag,
-        } => {
-            let state_identifier =
-                resolve_state_identifier(state_root_hash, block_hash, block_height)?;
-
-            let key_tag = match key_tag {
-                0 => KeyTag::Account,
-                1 => KeyTag::Hash,
-                2 => KeyTag::URef,
-                3 => KeyTag::Transfer,
-                4 => KeyTag::DeployInfo,
-                5 => KeyTag::EraInfo,
-                6 => KeyTag::Balance,
-                7 => KeyTag::Bid,
-                8 => KeyTag::Withdraw,
-                9 => KeyTag::Dictionary,
-                10 => KeyTag::SystemEntityRegistry,
-                11 => KeyTag::EraSummary,
-                12 => KeyTag::Unbond,
-                13 => KeyTag::ChainspecRegistry,
-                14 => KeyTag::ChecksumRegistry,
-                15 => KeyTag::BidAddr,
-                16 => KeyTag::Package,
-                17 => KeyTag::AddressableEntity,
-                18 => KeyTag::ByteCode,
-                19 => KeyTag::Message,
-                20 => KeyTag::NamedKey,
-                21 => KeyTag::BlockGlobal,
-                22 => KeyTag::BalanceHold,
-                23 => KeyTag::EntryPoint,
-                _ => return Err(Error::InvalidKeyTag(key_tag)),
-            };
-        }
-        State::Trie { digest } => {
-            let digest = Digest::from_hex(digest)?;
-        }
-        State::DictionaryItem {
-            state_root_hash: _,
-            block_hash: _,
-            block_height: _,
-            dictionary_identifier: _,
-        } => todo!(),
-    }
-    */
 }
 
 fn handle_state_response(response: &BinaryResponseAndRequest) {
