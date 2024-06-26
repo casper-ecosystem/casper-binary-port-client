@@ -333,6 +333,7 @@ pub async fn delegator_reward_by_block_hash(
 
 /// Returns the record with a given key from the given database. Response contains raw bytes
 /// as obtained from the node storage.
+/// ```
 /// | record id | database                      |
 /// |-----------|-------------------------------|
 /// | 0         | BlockHeader                   |
@@ -343,6 +344,7 @@ pub async fn delegator_reward_by_block_hash(
 /// | 5         | ExecutionResult               |
 /// | 6         | Transfer                      |
 /// | 7         | FinalizedTransactionApprovals |
+/// ```
 pub async fn read_record(
     node_address: &str,
     record_id: RecordId,
