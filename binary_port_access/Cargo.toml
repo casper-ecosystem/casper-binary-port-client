@@ -7,13 +7,8 @@ description = "Library for accessing Casper binary port."
 license = "Apache-2.0"
 
 [dependencies]
-casper-binary-port = { path = "../../casper-node/binary_port" }
-casper-types = { version = "5.0.0", path = "../../casper-node/types", features = [
-    "datasize",
-    "json-schema",
-    "std",
-    "std-fs-io",
-] }
+casper-types = { git = "https://github.com/rafal-ch/casper-node.git", branch = "types_serialization" }
+casper-binary-port = { git = "https://github.com/rafal-ch/casper-node.git", branch = "types_serialization" }
 thiserror = "1.0.58"
 tokio = { version = "1.36.0", features = ["macros", "rt-multi-thread", "net"] }
 tokio-util = { version = "0.6.4", features = ["codec"] }

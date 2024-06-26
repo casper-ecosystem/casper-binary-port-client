@@ -182,6 +182,7 @@ checksum = "514de17de45fdb8dc022b1a7975556c53c86f9f0aa5f534b98977b171857c2c9"
 [[package]]
 name = "casper-binary-port"
 version = "1.0.0"
+source = "git+https://github.com/rafal-ch/casper-node.git?branch=types_serialization#8c34457af2e8dc547997360eb12d8887db60279c"
 dependencies = [
  "bincode",
  "bytes",
@@ -211,24 +212,22 @@ dependencies = [
 name = "casper-binary-port-client"
 version = "0.1.0"
 dependencies = [
- "bytes",
  "casper-binary-port",
  "casper-binary-port-access",
  "casper-types",
  "clap",
  "erased-serde",
- "futures",
  "hex",
  "serde",
  "serde_json",
  "thiserror",
  "tokio",
- "tokio-util",
 ]
 
 [[package]]
 name = "casper-types"
 version = "5.0.0"
+source = "git+https://github.com/rafal-ch/casper-node.git?branch=types_serialization#8c34457af2e8dc547997360eb12d8887db60279c"
 dependencies = [
  "base16",
  "base64",
