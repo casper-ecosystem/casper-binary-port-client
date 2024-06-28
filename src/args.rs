@@ -33,14 +33,14 @@ pub(super) enum Commands {
     },
 }
 
-/// A request to the binary access interface.
+/// A CLI binary for interacting with the Casper network via the binary protocol.
 #[derive(Parser, Debug)]
 pub(super) struct Args {
     #[clap(subcommand)]
     pub(super) commands: Commands,
-    // TODO[RC]: Currently unused.
+    /// Provides a verbose output as the command is being handled (not supported yet).
     #[clap(long, short, default_value = "false")]
     pub(super) verbose: bool,
-    #[clap(long, short, default_value = "false", required = true)]
+    #[clap(long, short, required = true)]
     pub(super) node_address: String,
 }
