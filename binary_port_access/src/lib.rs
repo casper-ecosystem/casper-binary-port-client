@@ -13,7 +13,7 @@ use casper_binary_port::{
 use casper_types::{
     bytesrepr::ToBytes, AvailableBlockRange, BlockHash, BlockHeader, BlockIdentifier,
     BlockSynchronizerStatus, ChainspecRawBytes, Digest, EraId, GlobalStateIdentifier, Key,
-    NextUpgrade, Peers, PublicKey, SignedBlock, Transaction, TransactionHash,
+    NextUpgrade, Peers, ProtocolVersion, PublicKey, SignedBlock, Transaction, TransactionHash,
 };
 
 mod communication;
@@ -425,4 +425,13 @@ pub async fn try_speculative_execution(
         parse_response::<SpeculativeExecutionResult>(response.response())?;
     speculative_execution_result
         .ok_or_else(|| Error::Response("unable to read speculative execution result".to_string()))
+}
+
+/// Returns the protocol version.
+pub async fn protocol_version(node_address: &str) -> Result<ProtocolVersion, Error> {
+    let request = utils::make_information_get_request(InformationRequestTag::ProtocolVersion, &[])?;
+    let response = communication::send_request(node_address, request).await?;
+    check_error_code(&response)?;
+    let protocol_version = parse_response::<ProtocolVersion>(response.response())?;
+    protocol_version.ok_or_else(|| Error::Response("unable to read protocol version".to_string()))
 }

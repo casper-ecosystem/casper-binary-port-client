@@ -3,9 +3,9 @@ use casper_binary_port_access::{
     chainspec_raw_bytes, consensus_status, consensus_validator_changes,
     delegator_reward_by_block_hash, delegator_reward_by_block_height, delegator_reward_by_era,
     last_progress, latest_block_header, latest_signed_block, latest_switch_block_header,
-    network_name, next_upgrade, node_status, peers, reactor_state, signed_block_by_hash,
-    signed_block_by_height, transaction_by_hash, uptime, validator_reward_by_block_hash,
-    validator_reward_by_block_height, validator_reward_by_era,
+    network_name, next_upgrade, node_status, peers, protocol_version, reactor_state,
+    signed_block_by_hash, signed_block_by_height, transaction_by_hash, uptime,
+    validator_reward_by_block_hash, validator_reward_by_block_height, validator_reward_by_era,
 };
 use casper_types::{AsymmetricType, BlockHash, DeployHash, Digest, PublicKey, TransactionHash};
 use clap::{command, ArgGroup, Subcommand};
@@ -93,6 +93,8 @@ pub(crate) enum Information {
         #[clap(long, short, conflicts_with = "delegator_key")]
         delegator_key_file: Option<String>,
     },
+    /// Current protocol version.
+    ProtocolVersion,
 }
 
 pub(super) async fn handle_information_request(
@@ -216,5 +218,6 @@ pub(super) async fn handle_information_request(
                 _ => return Err(Error::InvalidEraIdentifier),
             }
         }
+        Information::ProtocolVersion => Box::new(protocol_version(node_address).await?),
     })
 }
