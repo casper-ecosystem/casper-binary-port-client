@@ -11,14 +11,14 @@ description = "CLI for Casper binary port."
 license = "Apache-2.0"
 
 [dependencies]
-casper-types = { git = "https://github.com/casper-network/casper-node.git", branch = "feat-2.0", features = [
+casper-types = { git = "https://github.com/casper-network/casper-node.git", branch = "rustSDK-feat-2.0", features = [
     "std-fs-io",
 ] }
-casper-binary-port = { git = "https://github.com/casper-network/casper-node.git", branch = "feat-2.0" }
+casper-binary-port = { version = "1.0.0", git = "https://github.com/casper-network/casper-node", branch = "rustSDK-feat-2.0" }
 casper-binary-port-access = { path = "./binary_port_access" }
 clap = { version = "4.5.3", features = ["derive", "wrap_help"] }
-thiserror = "1.0.58"
-tokio = { version = "1.36.0", features = ["macros", "rt-multi-thread", "net"] }
+thiserror = "1"
+tokio = { version = "1.40.0", features = ["macros", "rt", "net"] }
 hex = "0.4.3"
 serde = { version = "1.0.203", features = ["derive"] }
 serde_json = "1.0.117"

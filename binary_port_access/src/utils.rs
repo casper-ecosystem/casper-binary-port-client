@@ -9,6 +9,7 @@ use crate::{
     Error,
 };
 
+/// Expose make_information_get_request
 pub(crate) fn make_information_get_request(
     tag: InformationRequestTag,
     key: &[u8],
