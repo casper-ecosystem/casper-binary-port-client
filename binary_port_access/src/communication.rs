@@ -31,10 +31,6 @@ mod wasm_config {
 
 // TODO[RC]: Do not hardcode this.
 pub(crate) const SUPPORTED_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::from_parts(2, 0, 0);
-const REQUEST_ID_START: usize = 0;
-const REQUEST_ID_END: usize = REQUEST_ID_START + 2;
-const LENGTH_OF_REQUEST_START: usize = REQUEST_ID_END;
-const LENGTH_OF_REQUEST_END: usize = LENGTH_OF_REQUEST_START + 4;
 
 #[cfg(not(target_arch = "wasm32"))]
 const TIMEOUT_DURATION: Duration = Duration::from_secs(5);
@@ -258,6 +254,9 @@ async fn process_response(
     response_buf: Vec<u8>,
     request_id: u16,
 ) -> Result<BinaryResponseAndRequest, Error> {
+    const REQUEST_ID_START: usize = 0;
+    const REQUEST_ID_END: usize = REQUEST_ID_START + 2;
+
     // Extract Request ID from the response
     let _request_id = u16::from_le_bytes(
         response_buf[REQUEST_ID_START..REQUEST_ID_END]
@@ -273,17 +272,7 @@ async fn process_response(
         )));
     }
 
-    // Extract LengthOfRequest from the response
-    let length_of_request = u32::from_le_bytes(
-        response_buf[LENGTH_OF_REQUEST_START..LENGTH_OF_REQUEST_END]
-            .try_into()
-            .expect("Failed to extract LengthOfRequest"),
-    ) as usize;
-
-    // Extract remaining bytes from the response
-    let remaining_response = &response_buf[length_of_request..];
-
     // Deserialize the remaining response data
-    let response: BinaryResponseAndRequest = bytesrepr::deserialize_from_slice(remaining_response)?;
+    let response: BinaryResponseAndRequest = bytesrepr::deserialize_from_slice(response_buf)?;
     Ok(response)
 }
