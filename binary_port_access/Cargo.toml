@@ -23,6 +23,7 @@ wasm-bindgen = "*"
 wasm-bindgen-futures = "*"
 js-sys = "*"
 web-sys = { version = "0.3", features = ["WebSocket", "MessageEvent"] }
+gloo-utils = { version = "0.2", default-features = false, features = ["serde"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { version = "1.40.0", features = ["macros", "io-util", "time", "net"] }

@@ -24,9 +24,29 @@ mod wasm_config {
     pub use js_sys::Promise;
     pub use wasm_bindgen::prelude::Closure;
 
+    pub use js_sys::JsString;
+    pub use js_sys::Reflect;
+
+    pub use gloo_utils::format::JsValueSerdeExt;
     pub use wasm_bindgen::JsValue;
     pub use wasm_bindgen_futures::JsFuture;
     pub use web_sys::{MessageEvent, WebSocket};
+}
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = console, js_name = log)]
+    fn log_with_prefix(s: &str);
+}
+/// Logs an error message, prefixing it with "error wasm" and sends it to the console in JavaScript when running in a WebAssembly environment.
+/// When running outside WebAssembly, it prints the error message to the standard output.
+pub fn log(s: &str) {
+    let prefixed_s = format!("log wasm {}", s);
+    #[cfg(target_arch = "wasm32")]
+    log_with_prefix(&prefixed_s);
 }
 
 // TODO[RC]: Do not hardcode this.
@@ -80,6 +100,51 @@ pub(crate) async fn send_request(
 }
 
 #[cfg(target_arch = "wasm32")]
+#[wasm_bindgen]
+fn is_node() -> bool {
+    // Check if 'process' exists and if it has 'versions' property (which is present in Node.js)
+    let is_node = js_sys::global()
+        .dyn_into::<js_sys::Object>()
+        .map(|global| {
+            wasm_config::Reflect::has(&global, &wasm_config::JsString::from("process"))
+                .unwrap_or(false)
+                && wasm_config::Reflect::get(&global, &wasm_config::JsString::from("process"))
+                    .map(|process| {
+                        wasm_config::Reflect::has(
+                            &process,
+                            &wasm_config::JsString::from("versions"),
+                        )
+                        .unwrap_or(false)
+                    })
+                    .unwrap_or(false)
+        })
+        .unwrap_or(false);
+
+    is_node
+}
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen]
+pub async fn load_ws_module() -> Result<JsValue, JsValue> {
+    // Dynamically import the 'ws' module using JavaScript's import() function
+    let import_script = "import('ws')";
+
+    // Evaluate the `import` script in the JavaScript environment
+    let import_promise: Promise = js_sys::eval(import_script)
+        .map_err(|_| JsError::new("Failed to execute import for 'ws'").into())?
+        .dyn_into()
+        .map_err(|_| JsError::new("Failed to convert eval result to Promise").into())?;
+
+    // Wait for the Promise to resolve and load the WebSocket module
+    let ws_module = JsFuture::from(import_promise)
+        .await
+        .map_err(|_| JsError::new("Failed to load ws module via import").into())?;
+
+    // Return the WebSocket module
+    Ok(ws_module)
+}
+
+#[cfg(target_arch = "wasm32")]
 pub(crate) async fn send_request(
     node_address: &str,
     request: BinaryRequest,
@@ -88,104 +153,119 @@ pub(crate) async fn send_request(
     let payload = encode_request(&request, Some(request_id))
         .map_err(|e| Error::Serialization(format!("Failed to serialize request: {}", e)))?;
 
-    // Ensure the WebSocket URL is correct
     let ws_url = if node_address.starts_with("ws://") || node_address.starts_with("wss://") {
         node_address.to_string()
     } else {
         format!("ws://{}", node_address)
     };
 
-    // Create a new WebSocket connection
-    let ws = wasm_config::WebSocket::new(&ws_url)
-        .map_err(|e| Error::WebSocketCreation(format!("Failed to create WebSocket: {:?}", e)))?;
+    //  let ws: wasm_config::JsValue = if is_node() {
+    // In Node.js, use the 'ws' WebSocket library via require
+    let ws_module = load_ws_module();
+    // log(&format!("{:?}", ws_module.uwnrap()));
 
-    // Create a promise to handle incoming WebSocket messages
-    let promise = wasm_config::Promise::new(&mut |resolve, reject| {
-        // Clone ws and payload to avoid moving them into the closure
-        let ws_clone = ws.clone();
-        let payload_clone = payload.clone();
+    //     ws_module
+    //         .dyn_into::<js_sys::Function>()
+    //         .map_err(|_| {
+    //             Error::WebSocketCreation("Failed to cast ws module to function".to_string())
+    //         })?
+    //         .call1(
+    //             &wasm_bindgen::JsValue::NULL,
+    //             &wasm_config::JsString::from(ws_url.as_str()),
+    //         )
+    //         .map_err(|_| Error::WebSocketCreation("Failed to create WebSocket".to_string()))?
 
-        // Clone resolve and reject so they aren't moved into the closure
-        let resolve_clone = resolve.clone();
-        let reject_clone = reject.clone();
+    // } else {
+    //     // In the browser, use the native WebSocket
+    //     wasm_config::WebSocket::new(&ws_url)
+    //         .map_err(|e| Error::WebSocketCreation(format!("Failed to create WebSocket: {:?}", e)))?
+    //         .into() // Cast the WebSocket to a JsValue for consistency
+    // };
 
-        let onopen = wasm_config::Closure::wrap(Box::new(move || {
-            // Send the payload once the connection is open
-            if let Err(e) = ws_clone.send_with_u8_array(&payload_clone) {
-                reject_clone
-                    .call1(
-                        &wasm_config::JsValue::NULL,
-                        &wasm_config::JsValue::from_str(&format!(
-                            "Failed to send message: {:?}",
-                            e
-                        )),
-                    )
-                    .unwrap();
-            } else {
-                // Set up onmessage and onerror handlers
+    // // Create a promise to handle incoming WebSocket messages
+    // let promise = wasm_config::Promise::new(&mut |resolve, reject| {
+    //     let ws_clone = ws.clone();
+    //     let payload_clone = payload.clone();
 
-                // Clone resolve again for the onmessage closure
-                let resolve_clone_for_message = resolve_clone.clone();
+    //     // Set up onopen, onmessage, and onerror handlers
+    //     let onopen = wasm_config::Closure::wrap(Box::new(move || {
+    //         // Convert payload to JsValue using gloo_utils::format::JsValueSerdeExt
+    //         let payload_js_value = wasm_config::JsValue::from_serde(&payload_clone).unwrap();
 
-                let onmessage =
-                    wasm_config::Closure::wrap(Box::new(move |event: wasm_config::MessageEvent| {
-                        let data = event.data().as_string().unwrap_or_default();
-                        resolve_clone_for_message
-                            .call1(
-                                &wasm_config::JsValue::NULL,
-                                &wasm_config::JsValue::from_str(&data),
-                            )
-                            .unwrap();
-                    })
-                        as Box<dyn FnMut(wasm_config::MessageEvent)>);
+    //         if let Err(e) = js_sys::Reflect::get(&ws_clone, &wasm_config::JsString::from("send"))
+    //             .unwrap()
+    //             .dyn_into::<js_sys::Function>()
+    //             .unwrap()
+    //             .call1(&ws_clone, &payload_js_value)
+    //         {
+    //             reject
+    //                 .call1(
+    //                     &wasm_bindgen::JsValue::NULL,
+    //                     &wasm_bindgen::JsValue::from_str(&format!(
+    //                         "Failed to send message: {:?}",
+    //                         e
+    //                     )),
+    //                 )
+    //                 .unwrap();
+    //         } else {
+    //             let resolve_clone = resolve.clone();
+    //             let onmessage =
+    //                 wasm_config::Closure::wrap(Box::new(move |event: wasm_config::MessageEvent| {
+    //                     let data = event.data().as_string().unwrap_or_default();
+    //                     resolve_clone
+    //                         .call1(
+    //                             &wasm_bindgen::JsValue::NULL,
+    //                             &wasm_bindgen::JsValue::from_str(&data),
+    //                         )
+    //                         .unwrap();
+    //                 }) as Box<dyn FnMut(_)>);
 
-                ws_clone.set_onmessage(Some(onmessage.as_ref().unchecked_ref()));
-                onmessage.forget();
+    //             let ws_ref = ws_clone.unchecked_ref::<wasm_config::WebSocket>();
+    //             ws_ref.set_onmessage(Some(onmessage.as_ref().unchecked_ref()));
+    //             onmessage.forget();
 
-                // Clone reject again for the onerror closure
-                let reject_clone_for_error = reject_clone.clone();
+    //             let reject_clone = reject.clone();
+    //             let onerror =
+    //                 wasm_config::Closure::wrap(Box::new(move |event: wasm_bindgen::JsValue| {
+    //                     let error_msg = event
+    //                         .as_string()
+    //                         .unwrap_or_else(|| "WebSocket error".to_string());
+    //                     reject_clone
+    //                         .call1(
+    //                             &wasm_bindgen::JsValue::NULL,
+    //                             &wasm_bindgen::JsValue::from_str(&error_msg),
+    //                         )
+    //                         .unwrap();
+    //                 }) as Box<dyn FnMut(_)>);
 
-                let onerror =
-                    wasm_config::Closure::wrap(Box::new(move |event: wasm_config::JsValue| {
-                        let error_msg = event
-                            .as_string()
-                            .unwrap_or_else(|| "WebSocket error".to_string());
-                        reject_clone_for_error
-                            .call1(
-                                &wasm_config::JsValue::NULL,
-                                &wasm_config::JsValue::from_str(&error_msg),
-                            )
-                            .unwrap();
-                    })
-                        as Box<dyn FnMut(wasm_config::JsValue)>);
+    //             ws_ref.set_onerror(Some(onerror.as_ref().unchecked_ref()));
+    //             onerror.forget();
+    //         }
+    //     }) as Box<dyn FnMut()>);
 
-                ws_clone.set_onerror(Some(onerror.as_ref().unchecked_ref()));
-                onerror.forget();
-            }
-        }) as Box<dyn FnMut()>);
+    //     let ws_ref = ws.unchecked_ref::<wasm_config::WebSocket>();
+    //     ws_ref.set_onopen(Some(onopen.as_ref().unchecked_ref()));
+    //     onopen.forget();
+    // });
 
-        ws.set_onopen(Some(onopen.as_ref().unchecked_ref()));
-        onopen.forget();
-    });
+    // let js_future = wasm_config::JsFuture::from(js_sys::Promise::resolve(&promise));
+    // let onmessage = js_future
+    //     .await
+    //     .map_err(|e| Error::Response(format!("Failed to receive message: {:?}", e)))?;
 
-    let js_future = wasm_config::JsFuture::from(wasm_config::Promise::resolve(&promise));
-    let onmessage = js_future
-        .await
-        .map_err(|e| Error::Response(format!("Failed to receive message: {:?}", e)))?;
+    // // Cast the result to a MessageEvent
+    // let message_event = onmessage
+    //     .dyn_into::<wasm_config::MessageEvent>()
+    //     .map_err(|_| Error::Response("Failed to cast to MessageEvent".to_string()))?;
 
-    // Cast the result to a MessageEvent
-    let message_event = onmessage
-        .dyn_into::<wasm_config::MessageEvent>()
-        .map_err(|_| Error::Response("Failed to cast to MessageEvent".to_string()))?;
-
-    // Extract the response data as a string
-    let data = message_event
-        .data()
-        .as_string()
-        .ok_or_else(|| Error::Response("Failed to parse response data".to_string()))?;
+    // // Extract the response data as a string
+    // let data = message_event
+    //     .data()
+    //     .as_string()
+    //     .ok_or_else(|| Error::Response("Failed to parse response data".to_string()))?;
 
     // Process the response
-    let response = process_response(data.as_bytes().to_vec(), request_id).await?;
+    let response = process_response(vec![], request_id).await?;
 
     Ok(response)
 }
@@ -257,20 +337,20 @@ async fn process_response(
     const REQUEST_ID_START: usize = 0;
     const REQUEST_ID_END: usize = REQUEST_ID_START + 2;
 
-    // Extract Request ID from the response
-    let _request_id = u16::from_le_bytes(
-        response_buf[REQUEST_ID_START..REQUEST_ID_END]
-            .try_into()
-            .expect("Failed to extract Request ID"),
-    );
+    // // Extract Request ID from the response
+    // let _request_id = u16::from_le_bytes(
+    //     response_buf[REQUEST_ID_START..REQUEST_ID_END]
+    //         .try_into()
+    //         .expect("Failed to extract Request ID"),
+    // );
 
-    // Check if request_id matches _request_id and return an error if not
-    if request_id != _request_id {
-        return Err(Error::Response(format!(
-            "Request ID mismatch: expected {}, got {}",
-            request_id, _request_id
-        )));
-    }
+    // // Check if request_id matches _request_id and return an error if not
+    // if request_id != _request_id {
+    //     return Err(Error::Response(format!(
+    //         "Request ID mismatch: expected {}, got {}",
+    //         request_id, _request_id
+    //     )));
+    // }
 
     // Deserialize the remaining response data
     let response: BinaryResponseAndRequest = bytesrepr::deserialize_from_slice(response_buf)?;
