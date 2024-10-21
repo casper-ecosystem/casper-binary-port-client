@@ -55,9 +55,14 @@ pub(crate) fn parse_response<A: FromBytes + PayloadEntity>(
     response: &BinaryResponse,
 ) -> Result<Option<A>, Error> {
     match response.returned_data_type_tag() {
-        Some(found) if found == u8::from(A::PAYLOAD_TYPE) => {
-            // TODO: Verbose: print length of payload
-            Ok(Some(bytesrepr::deserialize_from_slice(response.payload())?))
+        Some(found) if found == u8::from(A::RESPONSE_TYPE) => {
+            // Verbose: Print length of payload
+            let payload = response.payload();
+            let _payload_length = payload.len();
+            // TODO[GR] use tracing::info! instead of dbg!
+            // dbg!(_payload_length);
+
+            Ok(Some(bytesrepr::deserialize_from_slice(payload)?))
         }
         Some(other) => Err(Error::Response(format!(
             "unsupported response type: {other}"
