@@ -15,7 +15,7 @@ path = "src/lib.rs"
 casper-types = { git = "https://github.com/casper-network/casper-node", default-features = false, branch = "feat-2.0" }
 casper-binary-port = { git = "https://github.com/casper-network/casper-node", branch = "feat-2.0" }
 thiserror = "1"
-futures = "0"
+futures = "0.3.31"
 rand = { version = "0.8.5", default-features = false }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
