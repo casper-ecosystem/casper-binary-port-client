@@ -12,4 +12,4 @@ casper-binary-port = { git = "https://github.com/casper-network/casper-node.git"
 thiserror = "1.0.58"
 tokio = { version = "1.36.0", features = ["macros", "rt-multi-thread", "net"] }
 tokio-util = { version = "0.6.4", features = ["codec"] }
-futures = "0"
+futures = "0.3.31"
