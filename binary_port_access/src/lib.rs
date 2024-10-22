@@ -1,8 +1,11 @@
 #![deny(missing_docs)]
 //! This crate provides a high-level API for interacting with a Casper node's binary port interface.
 
-use communication::parse_response;
-use thiserror::Error;
+/// Expose communication methods
+pub mod communication;
+mod error;
+/// Expose utils methods
+pub mod utils;
 
 use casper_binary_port::{
     BinaryRequest, ConsensusStatus, ConsensusValidatorChanges, EraIdentifier,
@@ -15,22 +18,20 @@ use casper_types::{
     BlockSynchronizerStatus, ChainspecRawBytes, Digest, EraId, GlobalStateIdentifier, Key,
     NextUpgrade, Peers, ProtocolVersion, PublicKey, SignedBlock, Transaction, TransactionHash,
 };
-
-mod communication;
-mod error;
-pub(crate) mod utils;
+use communication::{parse_response, send_request};
 
 pub use error::Error;
+use thiserror::Error;
 use utils::{
     check_error_code, delegator_reward_by_era_identifier, global_state_item_by_state_identifier,
-    validator_reward_by_era_identifier,
+    make_information_get_request, validator_reward_by_era_identifier,
 };
 
 /// Returns the latest switch block header.
 pub async fn latest_switch_block_header(node_address: &str) -> Result<Option<BlockHeader>, Error> {
     let request =
-        utils::make_information_get_request(InformationRequestTag::LatestSwitchBlockHeader, &[])?;
-    let response = communication::send_request(node_address, request).await?;
+        make_information_get_request(InformationRequestTag::LatestSwitchBlockHeader, &[])?;
+    let response = send_request(node_address, request).await?;
     check_error_code(&response)?;
     parse_response::<BlockHeader>(response.response())
 }
@@ -38,11 +39,11 @@ pub async fn latest_switch_block_header(node_address: &str) -> Result<Option<Blo
 /// Returns the latest block header.
 pub async fn latest_block_header(node_address: &str) -> Result<Option<BlockHeader>, Error> {
     let block_id: Option<BlockIdentifier> = None;
-    let request = utils::make_information_get_request(
+    let request = make_information_get_request(
         InformationRequestTag::BlockHeader,
         block_id.to_bytes()?.as_slice(),
     )?;
-    let response = communication::send_request(node_address, request).await?;
+    let response = send_request(node_address, request).await?;
     check_error_code(&response)?;
     parse_response::<BlockHeader>(response.response())
 }
@@ -53,11 +54,11 @@ pub async fn block_header_by_height(
     height: u64,
 ) -> Result<Option<BlockHeader>, Error> {
     let block_id = Some(BlockIdentifier::Height(height));
-    let request = utils::make_information_get_request(
+    let request = make_information_get_request(
         InformationRequestTag::BlockHeader,
         block_id.to_bytes()?.as_slice(),
     )?;
-    let response = communication::send_request(node_address, request).await?;
+    let response = send_request(node_address, request).await?;
     check_error_code(&response)?;
     parse_response::<BlockHeader>(response.response())
 }
@@ -68,11 +69,11 @@ pub async fn block_header_by_hash(
     hash: BlockHash,
 ) -> Result<Option<BlockHeader>, Error> {
     let block_id = Some(BlockIdentifier::Hash(hash));
-    let request = utils::make_information_get_request(
+    let request = make_information_get_request(
         InformationRequestTag::BlockHeader,
         block_id.to_bytes()?.as_slice(),
     )?;
-    let response = communication::send_request(node_address, request).await?;
+    let response = send_request(node_address, request).await?;
     check_error_code(&response)?;
     parse_response::<BlockHeader>(response.response())
 }
@@ -80,11 +81,11 @@ pub async fn block_header_by_hash(
 /// Returns the latest block along with signatures.
 pub async fn latest_signed_block(node_address: &str) -> Result<Option<SignedBlock>, Error> {
     let block_id: Option<BlockIdentifier> = None;
-    let request = utils::make_information_get_request(
+    let request = make_information_get_request(
         InformationRequestTag::SignedBlock,
         block_id.to_bytes()?.as_slice(),
     )?;
-    let response = communication::send_request(node_address, request).await?;
+    let response = send_request(node_address, request).await?;
     check_error_code(&response)?;
     parse_response::<SignedBlock>(response.response())
 }
@@ -95,11 +96,11 @@ pub async fn signed_block_by_height(
     height: u64,
 ) -> Result<Option<SignedBlock>, Error> {
     let block_id = Some(BlockIdentifier::Height(height));
-    let request = utils::make_information_get_request(
+    let request = make_information_get_request(
         InformationRequestTag::SignedBlock,
         block_id.to_bytes()?.as_slice(),
     )?;
-    let response = communication::send_request(node_address, request).await?;
+    let response = send_request(node_address, request).await?;
     check_error_code(&response)?;
     parse_response::<SignedBlock>(response.response())
 }
@@ -110,11 +111,11 @@ pub async fn signed_block_by_hash(
     hash: BlockHash,
 ) -> Result<Option<SignedBlock>, Error> {
     let block_id = Some(BlockIdentifier::Hash(hash));
-    let request = utils::make_information_get_request(
+    let request = make_information_get_request(
         InformationRequestTag::SignedBlock,
         block_id.to_bytes()?.as_slice(),
     )?;
-    let response = communication::send_request(node_address, request).await?;
+    let response = send_request(node_address, request).await?;
     check_error_code(&response)?;
     parse_response::<SignedBlock>(response.response())
 }
@@ -127,7 +128,7 @@ pub async fn transaction_by_hash(
     hash: TransactionHash,
     with_finalized_approvals: bool,
 ) -> Result<Option<TransactionWithExecutionInfo>, Error> {
-    let request = utils::make_information_get_request(
+    let request = make_information_get_request(
         InformationRequestTag::Transaction,
         hash.to_bytes()?
             .into_iter()
@@ -135,15 +136,15 @@ pub async fn transaction_by_hash(
             .collect::<Vec<_>>()
             .as_slice(),
     )?;
-    let response = communication::send_request(node_address, request).await?;
+    let response = send_request(node_address, request).await?;
     check_error_code(&response)?;
     parse_response::<TransactionWithExecutionInfo>(response.response())
 }
 
 /// Returns the peer list.
 pub async fn peers(node_address: &str) -> Result<Peers, Error> {
-    let request = utils::make_information_get_request(InformationRequestTag::Peers, &[])?;
-    let response = communication::send_request(node_address, request).await?;
+    let request = make_information_get_request(InformationRequestTag::Peers, &[])?;
+    let response = send_request(node_address, request).await?;
     check_error_code(&response)?;
     let peers = parse_response::<Peers>(response.response())?;
     peers.ok_or_else(|| Error::Response("unable to read peers".to_string()))
@@ -151,8 +152,8 @@ pub async fn peers(node_address: &str) -> Result<Peers, Error> {
 
 /// Returns the node uptime.
 pub async fn uptime(node_address: &str) -> Result<Uptime, Error> {
-    let request = utils::make_information_get_request(InformationRequestTag::Uptime, &[])?;
-    let response = communication::send_request(node_address, request).await?;
+    let request = make_information_get_request(InformationRequestTag::Uptime, &[])?;
+    let response = send_request(node_address, request).await?;
     check_error_code(&response)?;
     let uptime = parse_response::<Uptime>(response.response())?;
     uptime.ok_or_else(|| Error::Response("unable to read uptime".to_string()))
@@ -160,8 +161,8 @@ pub async fn uptime(node_address: &str) -> Result<Uptime, Error> {
 
 /// Returns the last progress as recorded by the node.
 pub async fn last_progress(node_address: &str) -> Result<LastProgress, Error> {
-    let request = utils::make_information_get_request(InformationRequestTag::LastProgress, &[])?;
-    let response = communication::send_request(node_address, request).await?;
+    let request = make_information_get_request(InformationRequestTag::LastProgress, &[])?;
+    let response = send_request(node_address, request).await?;
     check_error_code(&response)?;
     let last_progress = parse_response::<LastProgress>(response.response())?;
     last_progress.ok_or_else(|| Error::Response("unable to read last progress".to_string()))
@@ -169,8 +170,8 @@ pub async fn last_progress(node_address: &str) -> Result<LastProgress, Error> {
 
 /// Returns the current reactor state.
 pub async fn reactor_state(node_address: &str) -> Result<ReactorStateName, Error> {
-    let request = utils::make_information_get_request(InformationRequestTag::ReactorState, &[])?;
-    let response = communication::send_request(node_address, request).await?;
+    let request = make_information_get_request(InformationRequestTag::ReactorState, &[])?;
+    let response = send_request(node_address, request).await?;
     check_error_code(&response)?;
     let reactor_state = parse_response::<ReactorStateName>(response.response())?;
     reactor_state.ok_or_else(|| Error::Response("unable to read last reactor state".to_string()))
@@ -178,8 +179,8 @@ pub async fn reactor_state(node_address: &str) -> Result<ReactorStateName, Error
 
 /// Returns the network (chain) name.
 pub async fn network_name(node_address: &str) -> Result<NetworkName, Error> {
-    let request = utils::make_information_get_request(InformationRequestTag::NetworkName, &[])?;
-    let response = communication::send_request(node_address, request).await?;
+    let request = make_information_get_request(InformationRequestTag::NetworkName, &[])?;
+    let response = send_request(node_address, request).await?;
     check_error_code(&response)?;
     let network_name = parse_response::<NetworkName>(response.response())?;
     network_name.ok_or_else(|| Error::Response("unable to read last network name".to_string()))
@@ -190,8 +191,8 @@ pub async fn consensus_validator_changes(
     node_address: &str,
 ) -> Result<ConsensusValidatorChanges, Error> {
     let request =
-        utils::make_information_get_request(InformationRequestTag::ConsensusValidatorChanges, &[])?;
-    let response = communication::send_request(node_address, request).await?;
+        make_information_get_request(InformationRequestTag::ConsensusValidatorChanges, &[])?;
+    let response = send_request(node_address, request).await?;
     check_error_code(&response)?;
     let consensus_validator_changes =
         parse_response::<ConsensusValidatorChanges>(response.response())?;
@@ -205,8 +206,8 @@ pub async fn block_synchronizer_status(
     node_address: &str,
 ) -> Result<BlockSynchronizerStatus, Error> {
     let request =
-        utils::make_information_get_request(InformationRequestTag::BlockSynchronizerStatus, &[])?;
-    let response = communication::send_request(node_address, request).await?;
+        make_information_get_request(InformationRequestTag::BlockSynchronizerStatus, &[])?;
+    let response = send_request(node_address, request).await?;
     check_error_code(&response)?;
     let block_synchronizer_status = parse_response::<BlockSynchronizerStatus>(response.response())?;
     block_synchronizer_status
@@ -215,9 +216,8 @@ pub async fn block_synchronizer_status(
 
 /// Returns the available block range.
 pub async fn available_block_range(node_address: &str) -> Result<AvailableBlockRange, Error> {
-    let request =
-        utils::make_information_get_request(InformationRequestTag::AvailableBlockRange, &[])?;
-    let response = communication::send_request(node_address, request).await?;
+    let request = make_information_get_request(InformationRequestTag::AvailableBlockRange, &[])?;
+    let response = send_request(node_address, request).await?;
     check_error_code(&response)?;
     let available_block_range = parse_response::<AvailableBlockRange>(response.response())?;
     available_block_range
@@ -226,16 +226,16 @@ pub async fn available_block_range(node_address: &str) -> Result<AvailableBlockR
 
 /// Returns the information about the next upgrade point.
 pub async fn next_upgrade(node_address: &str) -> Result<Option<NextUpgrade>, Error> {
-    let request = utils::make_information_get_request(InformationRequestTag::NextUpgrade, &[])?;
-    let response = communication::send_request(node_address, request).await?;
+    let request = make_information_get_request(InformationRequestTag::NextUpgrade, &[])?;
+    let response = send_request(node_address, request).await?;
     check_error_code(&response)?;
     parse_response::<NextUpgrade>(response.response())
 }
 
 /// Returns the current status of the consensus.
 pub async fn consensus_status(node_address: &str) -> Result<ConsensusStatus, Error> {
-    let request = utils::make_information_get_request(InformationRequestTag::ConsensusStatus, &[])?;
-    let response = communication::send_request(node_address, request).await?;
+    let request = make_information_get_request(InformationRequestTag::ConsensusStatus, &[])?;
+    let response = send_request(node_address, request).await?;
     check_error_code(&response)?;
     let consensus_status = parse_response::<ConsensusStatus>(response.response())?;
     consensus_status
@@ -245,9 +245,8 @@ pub async fn consensus_status(node_address: &str) -> Result<ConsensusStatus, Err
 /// Returns the raw bytes of the current chainspec along with the optional information about the
 /// genesis accounts and global state configuration files.
 pub async fn chainspec_raw_bytes(node_address: &str) -> Result<ChainspecRawBytes, Error> {
-    let request =
-        utils::make_information_get_request(InformationRequestTag::ChainspecRawBytes, &[])?;
-    let response = communication::send_request(node_address, request).await?;
+    let request = make_information_get_request(InformationRequestTag::ChainspecRawBytes, &[])?;
+    let response = send_request(node_address, request).await?;
     check_error_code(&response)?;
     let chainspec_raw_bytes = parse_response::<ChainspecRawBytes>(response.response())?;
     chainspec_raw_bytes
@@ -256,8 +255,8 @@ pub async fn chainspec_raw_bytes(node_address: &str) -> Result<ChainspecRawBytes
 
 /// Returns the node status.
 pub async fn node_status(node_address: &str) -> Result<NodeStatus, Error> {
-    let request = utils::make_information_get_request(InformationRequestTag::NodeStatus, &[])?;
-    let response = communication::send_request(node_address, request).await?;
+    let request = make_information_get_request(InformationRequestTag::NodeStatus, &[])?;
+    let response = send_request(node_address, request).await?;
     check_error_code(&response)?;
     let node_status = parse_response::<NodeStatus>(response.response())?;
     node_status.ok_or_else(|| Error::Response("unable to read last node status".to_string()))
@@ -351,7 +350,7 @@ pub async fn read_record(
     key: &[u8],
 ) -> Result<Vec<u8>, Error> {
     let request = utils::make_record_request(record_id, key);
-    let response = communication::send_request(node_address, request).await?;
+    let response = send_request(node_address, request).await?;
     check_error_code(&response)?;
     Ok(response.response().payload().into())
 }
@@ -407,7 +406,7 @@ pub async fn try_accept_transaction(
     transaction: Transaction,
 ) -> Result<(), Error> {
     let request = BinaryRequest::TryAcceptTransaction { transaction };
-    let response = communication::send_request(node_address, request).await?;
+    let response = send_request(node_address, request).await?;
     check_error_code(&response)
 }
 
@@ -417,7 +416,7 @@ pub async fn try_speculative_execution(
     transaction: Transaction,
 ) -> Result<SpeculativeExecutionResult, Error> {
     let request = BinaryRequest::TrySpeculativeExec { transaction };
-    let response = communication::send_request(node_address, request).await?;
+    let response = send_request(node_address, request).await?;
 
     check_error_code(&response)?;
 
@@ -429,8 +428,8 @@ pub async fn try_speculative_execution(
 
 /// Returns the protocol version.
 pub async fn protocol_version(node_address: &str) -> Result<ProtocolVersion, Error> {
-    let request = utils::make_information_get_request(InformationRequestTag::ProtocolVersion, &[])?;
-    let response = communication::send_request(node_address, request).await?;
+    let request = make_information_get_request(InformationRequestTag::ProtocolVersion, &[])?;
+    let response = send_request(node_address, request).await?;
     check_error_code(&response)?;
     let protocol_version = parse_response::<ProtocolVersion>(response.response())?;
     protocol_version.ok_or_else(|| Error::Response("unable to read protocol version".to_string()))
