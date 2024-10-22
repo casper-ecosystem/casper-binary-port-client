@@ -23,7 +23,7 @@ lint-wasm:
 	cd binary_port_access && cargo clippy --target $(WASM_TARGET) --all-targets -- -D warnings
 
 # Format the codebase using rustfmt and check for correct formatting
-fmt:
+fmt-check:
 	cargo fmt --all -- --check
 
 # Check for outdated dependencies
@@ -36,3 +36,6 @@ ci-check: fmt lint lint-wasm test
 # Clean build artifacts
 clean:
 	cargo clean
+
+audit:
+	cargo audit
