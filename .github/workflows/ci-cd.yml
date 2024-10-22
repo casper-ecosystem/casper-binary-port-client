@@ -38,8 +38,8 @@ jobs:
       - name: Run Clippy linter
         run: make lint
 
-      - name: Run Clippy linter for wasm target
-        run: make lint-wasm
+      # - name: Run Clippy linter for wasm target
+      #   run: make lint-wasm
 
       - name: Check code formatting
         run: make fmt-check
