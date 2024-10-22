@@ -1,6 +1,7 @@
 use casper_binary_port::{
-    BinaryRequest, BinaryResponseAndRequest, EraIdentifier, GetRequest, GlobalStateQueryResult,
-    GlobalStateRequest, InformationRequest, InformationRequestTag, RecordId, RewardResponse,
+    BinaryRequest, BinaryResponseAndRequest, EraIdentifier, GetRequest, GlobalStateEntityQualifier,
+    GlobalStateQueryResult, GlobalStateRequest, InformationRequest, InformationRequestTag,
+    RecordId, RewardResponse,
 };
 use casper_types::{bytesrepr::ToBytes, GlobalStateIdentifier, Key, PublicKey};
 
@@ -71,13 +72,12 @@ pub(crate) async fn global_state_item_by_state_identifier(
     key: Key,
     path: Vec<String>,
 ) -> Result<Option<GlobalStateQueryResult>, Error> {
-    let global_state_request = GlobalStateRequest::Item {
-        state_identifier: global_state_identifier,
+    let qualifier = GlobalStateEntityQualifier::Item {
         base_key: key,
         path,
     };
+    let global_state_request = GlobalStateRequest::new(global_state_identifier, qualifier);
     let request = BinaryRequest::Get(GetRequest::State(Box::new(global_state_request)));
-
     let response = communication::send_request(node_address, request).await?;
     check_error_code(&response)?;
     parse_response::<GlobalStateQueryResult>(response.response())
