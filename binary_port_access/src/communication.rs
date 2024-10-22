@@ -99,9 +99,11 @@ pub(crate) async fn send_request(
     process_response(response_buf, request_id).await
 }
 
+// TODO Documentation
+/// DOC
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
-fn is_node() -> bool {
+pub fn is_node() -> bool {
     // Check if 'process' exists and if it has 'versions' property (which is present in Node.js)
     let is_node = js_sys::global()
         .dyn_into::<js_sys::Object>()
@@ -123,22 +125,24 @@ fn is_node() -> bool {
     is_node
 }
 
+// TODO Documentation
+/// DOC
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
-pub async fn load_ws_module() -> Result<JsValue, JsValue> {
+pub async fn load_ws_module() -> Result<JsValue, JsError> {
     // Dynamically import the 'ws' module using JavaScript's import() function
     let import_script = "import('ws')";
 
     // Evaluate the `import` script in the JavaScript environment
-    let import_promise: Promise = js_sys::eval(import_script)
-        .map_err(|_| JsError::new("Failed to execute import for 'ws'").into())?
+    let import_promise: wasm_config::Promise = js_sys::eval(import_script)
+        .map_err(|_| JsError::new("Failed to execute import for 'ws'"))?
         .dyn_into()
-        .map_err(|_| JsError::new("Failed to convert eval result to Promise").into())?;
+        .map_err(|_| JsError::new("Failed to convert eval result to Promise"))?;
 
     // Wait for the Promise to resolve and load the WebSocket module
-    let ws_module = JsFuture::from(import_promise)
+    let ws_module = wasm_config::JsFuture::from(import_promise)
         .await
-        .map_err(|_| JsError::new("Failed to load ws module via import").into())?;
+        .map_err(|_| JsError::new("Failed to load ws module via import"))?;
 
     // Return the WebSocket module
     Ok(ws_module)

@@ -182,7 +182,7 @@ checksum = "8318a53db07bb3f8dca91a600466bdb3f2eaadeedfdbcf02e1accbad9271ba50"
 [[package]]
 name = "casper-binary-port"
 version = "1.0.0"
-source = "git+https://github.com/casper-network/casper-node?branch=rustSDK-feat-2.0#45bd9e57ce71b0bbd82d8e05455466cd3fc867f3"
+source = "git+https://github.com/casper-network/casper-node?branch=feat-2.0#79714924f7a83d98e0d3037fef60fcb66ce4ef54"
 dependencies = [
  "bincode",
  "bytes",
@@ -232,7 +232,7 @@ dependencies = [
 [[package]]
 name = "casper-types"
 version = "5.0.0"
-source = "git+https://github.com/casper-network/casper-node?branch=rustSDK-feat-2.0#45bd9e57ce71b0bbd82d8e05455466cd3fc867f3"
+source = "git+https://github.com/casper-network/casper-node?branch=feat-2.0#79714924f7a83d98e0d3037fef60fcb66ce4ef54"
 dependencies = [
  "base16",
  "base64",
