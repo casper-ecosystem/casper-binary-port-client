@@ -252,7 +252,7 @@ async fn handle_websocket_connection(
 
         log("Payload length buffer prepared.");
 
-        // 1. Send the length buffer first
+        // Send the length buffer first
         let length_js_value = js_sys::Uint8Array::from(length_buffer.as_slice());
 
         let payload_clone = payload.clone(); // Clone the payload for sending
