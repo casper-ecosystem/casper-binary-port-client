@@ -65,7 +65,7 @@ fn is_node() -> bool {
         .unwrap_or(false)
 }
 
-/// Opens a TCP connection to a specified Node.js server and sends a payload.
+/// Opens a TCP connection to a specified binary server and sends a payload.
 ///
 /// This asynchronous function establishes a TCP connection to a server
 /// running in a Node.js environment. It sends a specified payload and
