@@ -34,12 +34,25 @@ fn log(s: &str) {
     println!("{}", s);
 }
 
-// TODO Documentation
-/// DOC
+/// Determines if the current environment is Node.js.
+///
+/// This function checks for the presence of the `process` global object and
+/// verifies that it has a `versions` property, which is characteristic of
+/// a Node.js environment.
+///
+/// # Returns
+///
+/// Returns `true` if the current environment is identified as Node.js, and
+/// `false` otherwise.
+///
+/// # Notes
+///
+/// This function is compiled only when targeting the `wasm32` architecture,
+/// ensuring that it is not included in builds for other targets.
 #[cfg(target_arch = "wasm32")]
 fn is_node() -> bool {
     // Check if 'process' exists and if it has 'versions' property (which is present in Node.js)
-    let is_node = js_sys::global()
+    js_sys::global()
         .dyn_into::<js_sys::Object>()
         .map(|global| {
             Reflect::has(&global, &JsString::from("process")).unwrap_or(false)
@@ -49,11 +62,40 @@ fn is_node() -> bool {
                     })
                     .unwrap_or(false)
         })
-        .unwrap_or(false);
-    // log(&format!("is_node {:?}", is_node));
-    is_node
+        .unwrap_or(false)
 }
 
+/// Opens a TCP connection to a specified Node.js server and sends a payload.
+///
+/// This asynchronous function establishes a TCP connection to a server
+/// running in a Node.js environment. It sends a specified payload and
+/// waits for a response. The connection is made using a JavaScript script
+/// executed in the WebAssembly context, leveraging Node.js's `net` module.
+///
+/// # Parameters
+///
+/// - `node_address`: A string that specifies the address of the Node.js
+///   server in the format "host:port".
+/// - `payload`: A `Vec<u8>` containing the data to be sent to the server.
+/// - `request_id`: A unique identifier for the request, used to process
+///   the response appropriately.
+///
+/// # Returns
+///
+/// This function returns a `Result` containing either a `BinaryResponseAndRequest`
+/// on success or an `Error` on failure.
+///
+/// # Errors
+///
+/// This function may return an `Error` if:
+/// - The JavaScript execution fails.
+/// - The connection to the TCP server cannot be established.
+/// - There is an error in sending or receiving data.
+///
+/// # Notes
+///
+/// This function is only compiled for the `wasm32` target, ensuring that
+/// it does not affect builds for other architectures.
 #[cfg(target_arch = "wasm32")]
 async fn open_tcp_connection(
     node_address: &str,
@@ -157,9 +199,41 @@ async fn open_tcp_connection(
     // Read and process the response
     let response_buf = read_response(response_bytes).await?;
     // Now process the response using the request_id
-    process_response(response_buf.into(), request_id).await
+    process_response(response_buf, request_id).await
 }
 
+/// Handles a WebSocket connection, sending a payload and awaiting a response.
+///
+/// This asynchronous function manages a WebSocket connection by sending a
+/// specified payload to a server and waiting for a binary response. It first
+/// sends the length of the payload, followed by the payload itself. The response
+/// is received through a message event, processed, and returned.
+///
+/// # Parameters
+///
+/// - `web_socket`: An instance of `WebSocket` used to establish the connection
+///   and communicate with the server.
+/// - `payload`: A `Vec<u8>` containing the data to be sent over the WebSocket.
+/// - `request_id`: A unique identifier for the request, used for processing the
+///   response later.
+///
+/// # Returns
+///
+/// This function returns a `Result` that, on success, contains a
+/// `BinaryResponseAndRequest`, and on failure, contains an `Error`.
+///
+/// # Errors
+///
+/// This function may return an `Error` if:
+/// - The WebSocket connection fails to open.
+/// - There is an error sending the length buffer or payload.
+/// - The WebSocket encounters an error during communication.
+/// - The received message cannot be processed correctly.
+///
+/// # Notes
+///
+/// This function is only compiled for the `wasm32` target, making it suitable
+/// for WebAssembly applications where WebSocket communication is required.
 #[cfg(target_arch = "wasm32")]
 async fn handle_websocket_connection(
     web_socket: WebSocket,
@@ -318,9 +392,43 @@ async fn handle_websocket_connection(
 
     // Process the response data as in the original function
     let response_buf = read_response(response_data).await?;
-    process_response(response_buf.into(), request_id).await
+    process_response(response_buf, request_id).await
 }
 
+/// Reads and processes a response from a byte vector, extracting the payload
+/// based on a length prefix.
+///
+/// This asynchronous function reads a response in the form of a byte vector
+/// that includes a length prefix. The length prefix indicates the size of the
+/// actual payload that follows. The function validates the response format
+/// and returns the extracted payload if the format is correct.
+///
+/// # Parameters
+///
+/// - `response_bytes`: A `Vec<u8>` containing the raw bytes of the response
+///   received from a server. The first `LENGTH_FIELD_SIZE` bytes represent
+///   the length of the subsequent payload.
+///
+/// # Returns
+///
+/// This function returns a `Result` that, on success, contains a `Vec<u8>`
+/// representing the extracted payload. On failure, it contains an `Error`.
+///
+/// # Errors
+///
+/// This function may return an `Error` if:
+/// - The input `response_bytes` does not contain enough bytes to read the
+///   length prefix.
+/// - The specified length of the payload exceeds the total number of bytes
+///   available, indicating that the response is incomplete.
+///
+/// # Notes
+///
+/// Ensure that the `LENGTH_FIELD_SIZE` constant is properly defined to
+/// match the expected size of the length prefix (4 bytes for
+/// a `u32` for Casper binary protocol). This function is only compiled for the `wasm32` target,
+/// making it suitable for WebAssembly applications where binary data
+/// processing is required.
 #[cfg(target_arch = "wasm32")]
 async fn read_response(response_bytes: Vec<u8>) -> Result<Vec<u8>, Error> {
     // Ensure we have enough bytes for the length field
@@ -346,8 +454,42 @@ async fn read_response(response_bytes: Vec<u8>) -> Result<Vec<u8>, Error> {
     Ok(response_buf)
 }
 
-// TODO Documentation
-/// DOC
+/// Sends a binary request to a specified node address, either via TCP or WebSocket.
+///
+/// This asynchronous function generates a unique request ID, encodes the given
+/// binary request into a payload, and then sends the request to the specified
+/// `node_address`. The method of transmission depends on the environment:
+/// - In Node.js, it uses raw TCP connections via the `net` module.
+/// - In non-Node.js environments (typically browsers), it uses WebSockets.
+///   Note that browsers have CORS (Cross-Origin Resource Sharing) restrictions,
+///   so the WebSocket requests should/may be addressed to a WebSocket proxy that
+///   redirects the requests to the node's binary port.
+///
+/// # Parameters
+///
+/// - `node_address`: A `&str` representing the address of the node to which
+///   the request will be sent. This should include the host and port (e.g.,
+///   "localhost:28101").
+/// - `request`: A `BinaryRequest` instance containing the data to be sent.
+///
+/// # Returns
+///
+/// This function returns a `Result` that, on success, contains a `BinaryResponseAndRequest`
+/// indicating the response received from the node. On failure, it returns an `Error`.
+///
+/// # Errors
+///
+/// This function may return an `Error` if:
+/// - There is an issue serializing the request into a binary format.
+/// - The connection fails when trying to open a TCP connection in Node.js.
+/// - The WebSocket connection cannot be created in non-Node.js environments.
+/// - There are issues handling the WebSocket connection.
+///
+/// # Notes
+///
+/// This function is only compiled for the `wasm32` target, making it suitable
+/// for WebAssembly applications where communication with a node server is required.
+
 #[cfg(target_arch = "wasm32")]
 pub(crate) async fn send_request(
     node_address: &str,
@@ -361,8 +503,8 @@ pub(crate) async fn send_request(
         // In Node.js, use raw TCP with the `net` module for direct connection
         let tcp_result = open_tcp_connection(node_address, payload.clone(), request_id).await;
         match tcp_result {
-            Ok(response) => return Ok(response),
-            Err(e) => return Err(Error::Response(format!("TCP connection failed: {:?}", e))),
+            Ok(response) => Ok(response),
+            Err(e) => Err(Error::Response(format!("TCP connection failed: {:?}", e))),
         }
     } else {
         // In the browser or non-Node.js environments, use WebSocket
@@ -372,6 +514,6 @@ pub(crate) async fn send_request(
         })?;
 
         let response = handle_websocket_connection(web_socket, payload, request_id).await?;
-        return Ok(response);
+        Ok(response)
     }
 }
