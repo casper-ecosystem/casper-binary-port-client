@@ -27,9 +27,10 @@ Commands:
 
 Options:
   -v, --verbose                      Provides a verbose output as the command is being handled (not supported yet)
-  -n, --node-address <NODE_ADDRESS>  
+  -n, --node-address <NODE_ADDRESS>
   -h, --help                         Print help
 ```
+
 </details>
 
 To get further info on any command, run `help` followed by the subcommand, e.g.
@@ -46,15 +47,16 @@ Retrieve block header by height or hash
 Usage: casper-binary-port-client information block-header [OPTIONS]
 
 Options:
-      --hash <HASH>      
-      --height <HEIGHT>  
+      --hash <HASH>
+      --height <HEIGHT>
   -h, --help             Print help
 ```
+
 </details>
 
 ## Client library
 
-The `binary_port_access` directory contains source for the client library, which may be called directly rather than through the CLI binary. The CLI app `casper-binary-port-client` makes use of this library to implement its functionality.
+The `binary-port-access` directory contains source for the client library, which may be called directly rather than through the CLI binary. The CLI app `casper-binary-port-client` makes use of this library to implement its functionality.
 
 ## License
 

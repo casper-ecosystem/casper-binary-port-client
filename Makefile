@@ -20,7 +20,7 @@ lint:
 
 # Run clippy on wasm32-unknown-unknown target
 lint-wasm:
-	cd binary_port_access && cargo clippy --target $(WASM_TARGET) --all-targets -- -D warnings
+	cd binary-port-access && cargo clippy --target $(WASM_TARGET) --all-targets -- -D warnings
 
 # Format the codebase using rustfmt and check for correct formatting
 fmt-check:
