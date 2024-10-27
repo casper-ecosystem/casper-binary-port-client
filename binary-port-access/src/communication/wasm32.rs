@@ -274,7 +274,7 @@ async fn handle_websocket_connection(
                     } else {
                         log("Length buffer sent successfully, now sending payload.");
 
-                        // 2. Send the payload after the length buffer has been sent
+                        // Send the payload after the length buffer has been sent
                         let payload_array = js_sys::Uint8Array::from(payload_clone.as_slice());
 
                         if let Err(e) = send_func.call1(&ws_clone, &payload_array) {
