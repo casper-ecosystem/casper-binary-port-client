@@ -5,10 +5,11 @@ use casper_binary_port::{
 };
 use casper_types::{bytesrepr::ToBytes, GlobalStateIdentifier, Key, PublicKey};
 
-use crate::{
-    communication::{self, parse_response},
-    Error,
-};
+#[cfg(not(target_arch = "wasm32"))]
+use crate::communication::common::send_request;
+#[cfg(target_arch = "wasm32")]
+use crate::communication::wasm32::send_request;
+use crate::{communication::common::parse_response, Error};
 
 /// Expose make_information_get_request
 pub(crate) fn make_information_get_request(
@@ -43,7 +44,7 @@ pub(crate) async fn delegator_reward_by_era_identifier(
         .to_bytes()?
         .as_slice(),
     )?;
-    let response = communication::send_request(node_address, request).await?;
+    let response = send_request(node_address, request).await?;
     check_error_code(&response)?;
     parse_response::<RewardResponse>(response.response())
 }
@@ -63,7 +64,7 @@ pub(crate) async fn validator_reward_by_era_identifier(
         .to_bytes()?
         .as_slice(),
     )?;
-    let response = communication::send_request(node_address, request).await?;
+    let response = send_request(node_address, request).await?;
     parse_response::<RewardResponse>(response.response())
 }
 
@@ -79,7 +80,7 @@ pub(crate) async fn global_state_item_by_state_identifier(
     };
     let global_state_request = GlobalStateRequest::new(global_state_identifier, qualifier);
     let request = BinaryRequest::Get(GetRequest::State(Box::new(global_state_request)));
-    let response = communication::send_request(node_address, request).await?;
+    let response = send_request(node_address, request).await?;
     check_error_code(&response)?;
     parse_response::<GlobalStateQueryResult>(response.response())
 }

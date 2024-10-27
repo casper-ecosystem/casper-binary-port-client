@@ -18,7 +18,11 @@ use casper_types::{
     BlockSynchronizerStatus, ChainspecRawBytes, Digest, EraId, GlobalStateIdentifier, Key,
     NextUpgrade, Peers, ProtocolVersion, PublicKey, SignedBlock, Transaction, TransactionHash,
 };
-use communication::{parse_response, send_request};
+use communication::common::parse_response;
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) use communication::common::send_request;
+#[cfg(target_arch = "wasm32")]
+pub(crate) use communication::wasm32::send_request;
 
 pub use error::Error;
 use thiserror::Error;
