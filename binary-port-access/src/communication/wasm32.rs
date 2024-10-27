@@ -67,15 +67,15 @@ fn is_node() -> bool {
 
 /// Opens a TCP connection to a specified binary server and sends a payload.
 ///
-/// This asynchronous function establishes a TCP connection to a server
-/// running in a Node.js environment. It sends a specified payload and
+/// This asynchronous function establishes a TCP connection to a binary
+/// server. It sends a specified payload and
 /// waits for a response. The connection is made using a JavaScript script
 /// executed in the WebAssembly context, leveraging Node.js's `net` module.
 ///
 /// # Parameters
 ///
-/// - `node_address`: A string that specifies the address of the Node.js
-///   server in the format "host:port".
+/// - `node_address`: A string that specifies the address of server
+///   in the format "host:port". Typically "127.0.0.1:28101"
 /// - `payload`: A `Vec<u8>` containing the data to be sent to the server.
 /// - `request_id`: A unique identifier for the request, used to process
 ///   the response appropriately.
@@ -489,7 +489,6 @@ async fn read_response(response_bytes: Vec<u8>) -> Result<Vec<u8>, Error> {
 ///
 /// This function is only compiled for the `wasm32` target, making it suitable
 /// for WebAssembly applications where communication with a node server is required.
-
 #[cfg(target_arch = "wasm32")]
 pub(crate) async fn send_request(
     node_address: &str,
@@ -508,7 +507,15 @@ pub(crate) async fn send_request(
         }
     } else {
         // In the browser or non-Node.js environments, use WebSocket
-        let ws_url = format!("ws://{}", node_address);
+        // Note that browsers have CORS (Cross-Origin Resource Sharing) restrictions,
+        // so the WebSocket requests should/may be addressed to a WebSocket proxy that
+        // redirects the requests to the node's binary port. Typically "ws://127.0.0.1:8181" proxied to binary "127.0.0.1:28101"
+        // Ensure node_address does not already contain "ws://"
+        let ws_url = if node_address.starts_with("ws://") {
+            node_address.to_string() // Use the existing node_address if it already contains the prefix
+        } else {
+            format!("ws://{}", node_address)
+        };
         let web_socket = WebSocket::new(&ws_url).map_err(|e| {
             Error::WebSocketCreation(format!("Failed to create WebSocket: {:?}", e))
         })?;
