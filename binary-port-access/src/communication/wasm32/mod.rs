@@ -112,10 +112,10 @@ async fn open_tcp_connection(
 
     let parts: Vec<&str> = node_address.split(':').collect();
     let host = *parts
-        .get(0)
+        .first()
         .ok_or_else(|| Error::Response("Missing host".to_string()))?;
     let port = *parts
-        .get(1)
+        .last()
         .ok_or_else(|| Error::Response("Missing port".to_string()))?;
 
     // Prepare the payload buffer
