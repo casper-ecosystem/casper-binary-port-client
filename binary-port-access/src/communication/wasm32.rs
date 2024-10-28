@@ -380,7 +380,7 @@ async fn handle_websocket_connection(
         .await
         .map_err(|e| Error::Response(format!("Failed to receive message: {:?}", e)))?;
 
-    let response_data = onmessage
+    let response_bytes = onmessage
         .dyn_into::<js_sys::Array>()
         .map_err(|_| Error::Response("Expected Array format for TCP response data".to_string()))?
         .to_vec()
@@ -388,7 +388,7 @@ async fn handle_websocket_connection(
         .map(|val| val.as_f64().unwrap_or(0.0) as u8)
         .collect::<Vec<u8>>();
 
-    log(&format!("read_response {:?}", response_data));
+    log(&format!("read_response {:?}", response_bytes));
 
     // Read and process the response
     let response_buf = read_response(response_bytes).await?;
