@@ -9,6 +9,8 @@ use gloo_utils::format::JsValueSerdeExt;
 #[cfg(target_arch = "wasm32")]
 use js_sys::{JsString, Promise, Reflect};
 #[cfg(target_arch = "wasm32")]
+use node_tcp_helper::NODE_TCP_HELPER;
+#[cfg(target_arch = "wasm32")]
 use rand::Rng;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{prelude::Closure, prelude::*, JsCast, JsValue};
@@ -16,6 +18,10 @@ use wasm_bindgen::{prelude::Closure, prelude::*, JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
 #[cfg(target_arch = "wasm32")]
 use web_sys::{MessageEvent, WebSocket};
+
+#[cfg(target_arch = "wasm32")]
+pub mod node_tcp_helper;
+
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
 extern "C" {
@@ -102,77 +108,29 @@ async fn open_tcp_connection(
     payload: Vec<u8>,
     request_id: u16,
 ) -> Result<BinaryResponseAndRequest, Error> {
-    let tcp_script = format!(
-        r#"
-(async () => {{
-    try {{
-        const net = require('net');
-        const client = new net.Socket();
-        const payload = Buffer.from({:?});
-        const node_address = '{node_address}';
-        const [host, port] = node_address.split(':');
+    use node_tcp_helper::sanitize_input;
 
-        // console.log('TCP Client created:');
-        // console.log('Payload to send:', payload);
-        // console.log('node_address', node_address);
-        // console.log('host', host);
-        // console.log('port', port);
-        // console.log('Promise available:', typeof Promise !== 'undefined');
+    let parts: Vec<&str> = node_address.split(':').collect();
+    let host = *parts
+        .get(0)
+        .ok_or_else(|| Error::Response("Missing host".to_string()))?;
+    let port = *parts
+        .get(1)
+        .ok_or_else(|| Error::Response("Missing port".to_string()))?;
 
-        return new Promise((resolve, reject) => {{
-            // console.log('Connecting to TCP server at', host, port);
+    // Prepare the payload buffer
+    let buffer_payload = &format!("{:?}", payload);
 
-            const lengthBuffer = Buffer.alloc(4);
-            lengthBuffer.writeUInt32LE(payload.length);
-            client.connect(parseInt(port), host, () => {{
-                // console.log('Connected to TCP server');
+    let sanitized_buffer_payload = sanitize_input(buffer_payload);
+    let sanitized_host = sanitize_input(host);
+    let sanitized_port = sanitize_input(port);
 
-                // First, send the length of the payload
-                client.write(lengthBuffer, (err) => {{
-                    if (err) {{
-                        console.error('Error sending length:', err.message);
-                        client.destroy();
-                        return;
-                    }}
-                    // console.log('Length of payload sent');
+    let tcp_script = NODE_TCP_HELPER
+        .replace("{buffer_payload}", &sanitized_buffer_payload)
+        .replace("{host}", &sanitized_host)
+        .replace("{port}", &sanitized_port);
 
-                    // Now, send the actual payload
-                    client.write(payload, (err) => {{
-                        if (err) {{
-                            console.error('Error sending payload:', err.message);
-                        }} else {{
-                            // console.log('Payload sent');
-                        }}
-                    }});
-                }});
-            }});
-
-            client.on('data', (data) => {{
-                // console.log('Data received from server:', data);
-                resolve(data);
-                client.destroy();  // Close connection after receiving response
-            }});
-
-            client.on('error', (err) => {{
-                console.error('TCP connection error:', err.message);
-                reject(new Error('TCP connection error: ' + err.message));
-            }});
-
-            client.on('close', () => {{
-                // console.log('TCP connection closed');
-            }});
-        }});
-    }} catch (err) {{
-        console.error('Error in TCP script:', err.message);
-        throw new Error('Script execution error: ' + err.message);
-    }}
-}})();
-    "#,
-        payload
-    );
-
-    // ! TODO [GR] Replace this eval for a global scope function call/apply
-    // Execute the script in JavaScript context using eval (tcp_script is local)
+    // Execute the script in JavaScript context using eval (tcp_script is local but it requires "require" Js module not available in a classic function js_sys::Function)
     let tcp_promise: Promise = js_sys::eval(&tcp_script)
         .map_err(|err| {
             log("Failed to execute TCP script in eval");
@@ -388,8 +346,6 @@ async fn handle_websocket_connection(
         .into_iter()
         .map(|val| val.as_f64().unwrap_or(0.0) as u8)
         .collect::<Vec<u8>>();
-
-    log(&format!("read_response {:?}", response_bytes));
 
     // Read and process the response
     let response_buf = read_response(response_bytes).await?;
