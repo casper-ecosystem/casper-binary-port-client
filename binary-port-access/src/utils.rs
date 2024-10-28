@@ -11,7 +11,6 @@ use crate::communication::common::send_request;
 use crate::communication::wasm32::send_request;
 use crate::{communication::common::parse_response, Error};
 
-/// Expose make_information_get_request
 pub(crate) fn make_information_get_request(
     tag: InformationRequestTag,
     key: &[u8],

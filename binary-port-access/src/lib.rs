@@ -1,11 +1,9 @@
 #![deny(missing_docs)]
 //! This crate provides a high-level API for interacting with a Casper node's binary port interface.
 
-/// Expose communication methods
-pub mod communication;
+mod communication;
 mod error;
-/// Expose utils methods
-pub mod utils;
+mod utils;
 
 use casper_binary_port::{
     BinaryRequest, ConsensusStatus, ConsensusValidatorChanges, EraIdentifier,

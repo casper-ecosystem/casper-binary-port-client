@@ -171,7 +171,8 @@ async fn open_tcp_connection(
         payload
     );
 
-    // Execute the script in JavaScript context using eval
+    // ! TODO [GR] Replace this eval for a global scope function call/apply
+    // Execute the script in JavaScript context using eval (tcp_script is local)
     let tcp_promise: Promise = js_sys::eval(&tcp_script)
         .map_err(|err| {
             log("Failed to execute TCP script in eval");
