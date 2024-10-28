@@ -390,8 +390,9 @@ async fn handle_websocket_connection(
 
     log(&format!("read_response {:?}", response_data));
 
-    // Process the response data as in the original function
-    let response_buf = read_response(response_data).await?;
+    // Read and process the response
+    let response_buf = read_response(response_bytes).await?;
+    // Now process the response using the request_id
     process_response(response_buf, request_id).await
 }
 
