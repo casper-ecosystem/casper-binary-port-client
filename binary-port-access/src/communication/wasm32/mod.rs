@@ -209,7 +209,7 @@ async fn handle_websocket_connection(
         let mut length_buffer = vec![0; LENGTH_FIELD_SIZE];
         length_buffer[..LENGTH_FIELD_SIZE].copy_from_slice(&payload_length.to_le_bytes());
 
-        log("Payload length buffer prepared.");
+        // log("Payload length buffer prepared.");
 
         // Send the length buffer first
         let length_js_value = js_sys::Uint8Array::from(length_buffer.as_slice());
@@ -218,7 +218,7 @@ async fn handle_websocket_connection(
 
         // Set up onopen handler to send length and then payload
         let onopen = Closure::wrap(Box::new(move || {
-            log("WebSocket connection opened, attempting to send length buffer.");
+            // log("WebSocket connection opened, attempting to send length buffer.");
 
             // Use ws_clone in the closure directly
             let send_func_result = js_sys::Reflect::get(&ws_clone, &JsString::from("send"))
@@ -231,7 +231,7 @@ async fn handle_websocket_connection(
                         log(&format!("Failed to send length buffer: {:?}", e));
                         reject_clone.call1(&JsValue::NULL, &e).unwrap();
                     } else {
-                        log("Length buffer sent successfully, now sending payload.");
+                        // log("Length buffer sent successfully, now sending payload.");
 
                         // Send the payload after the length buffer has been sent
                         let payload_array = js_sys::Uint8Array::from(payload_clone.as_slice());
@@ -240,7 +240,7 @@ async fn handle_websocket_connection(
                             log(&format!("Failed to send payload: {:?}", e));
                             reject_clone.call1(&JsValue::NULL, &e).unwrap();
                         } else {
-                            log("Payload sent successfully, setting up message handler.");
+                            // log("Payload sent successfully, setting up message handler.");
 
                             let onerror = {
                                 let reject_clone = reject_clone.clone(); // Clone for use in onerror
@@ -262,7 +262,7 @@ async fn handle_websocket_connection(
                             let onmessage = {
                                 let resolve_clone = resolve_clone.clone(); // Clone for use in onmessage
                                 Closure::wrap(Box::new(move |event: MessageEvent| {
-                                    log("Message received from WebSocket.");
+                                    // log("Message received from WebSocket.");
 
                                     // Convert the event data to Blob
                                     let data: web_sys::Blob =
@@ -276,9 +276,7 @@ async fn handle_websocket_connection(
                                     let onload = {
                                         let file_reader_clone = file_reader.clone(); // Clone here
                                         Closure::wrap(Box::new(move |_: web_sys::ProgressEvent| {
-                                            // log(
-                                            //     "Blob read successfully, converting to Uint8Array.",
-                                            // );
+                                            // log("Blob read successfully, converting to Uint8Array.");
 
                                             // Get the result of the FileReader as ArrayBuffer
                                             let result = file_reader_clone.result().unwrap();
@@ -313,7 +311,6 @@ async fn handle_websocket_connection(
                                 })
                                     as Box<dyn FnMut(_)>)
                             };
-
                             ws_clone.set_onmessage(Some(onmessage.as_ref().unchecked_ref()));
                             onmessage.forget(); // Prevent memory leak by forgetting the closure
                         }
@@ -328,7 +325,7 @@ async fn handle_websocket_connection(
 
         let ws_ref = web_socket.unchecked_ref::<WebSocket>();
         ws_ref.set_onopen(Some(onopen.as_ref().unchecked_ref()));
-        log("WebSocket set_onopen event registered.");
+        // log("WebSocket set_onopen event registered.");
         onopen.forget(); // Prevent memory leak by forgetting the closure
     });
 
