@@ -342,6 +342,16 @@ pub(crate) async fn process_response(
     const REQUEST_ID_START: usize = 0;
     const REQUEST_ID_END: usize = REQUEST_ID_START + 2;
 
+    // Check if the response buffer is at least the size of the request ID
+    if response_buf.len() < REQUEST_ID_END {
+        return Err(Error::Response(format!(
+            "Response buffer is too small: expected at least {} bytes, got {}. Buffer contents: {:?}",
+            REQUEST_ID_END,
+            response_buf.len(),
+            response_buf
+        )));
+    }
+
     // Extract Request ID from the response
     let _request_id = u16::from_le_bytes(
         response_buf[REQUEST_ID_START..REQUEST_ID_END]
@@ -358,6 +368,7 @@ pub(crate) async fn process_response(
     }
 
     // Deserialize the remaining response data
-    let response: BinaryResponseAndRequest = bytesrepr::deserialize_from_slice(response_buf)?;
+    let response: BinaryResponseAndRequest =
+        bytesrepr::deserialize_from_slice(&response_buf[REQUEST_ID_END..])?;
     Ok(response)
 }
