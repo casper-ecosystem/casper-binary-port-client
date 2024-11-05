@@ -207,10 +207,9 @@ async fn handle_websocket_connection(
 
     let length_js_value = js_sys::Uint8Array::from(length_buffer.as_slice());
 
-    let promise: Promise;
     // If socket is not opened
-    if web_socket.ready_state() != WebSocket::OPEN {
-        promise = Promise::new(&mut |resolve, reject| {
+    let promise: Promise = if web_socket.ready_state() != WebSocket::OPEN {
+        Promise::new(&mut |resolve, reject| {
             let web_socket_clone = web_socket.clone(); // Clone for the closure
             let length_js_value = length_js_value.clone(); // Clone for the closure
             let payload_clone = payload.clone(); // Clone for the closure
@@ -231,11 +230,11 @@ async fn handle_websocket_connection(
             let web_socket_ref = web_socket.unchecked_ref::<WebSocket>();
             web_socket_ref.set_onopen(Some(onopen.as_ref().unchecked_ref()));
             onopen.forget(); // Prevent memory leak by forgetting the closure
-        });
+        })
     }
     // Socket is already opened
     else {
-        promise = Promise::new(&mut |resolve, reject| {
+        Promise::new(&mut |resolve, reject| {
             let web_socket_clone = web_socket.clone(); // Clone for the closure
             let length_js_value = length_js_value.clone(); // Clone for the closure
             let payload_clone = payload.clone(); // Clone for the closure
@@ -248,8 +247,8 @@ async fn handle_websocket_connection(
                 &resolve,
                 &reject,
             );
-        });
-    }
+        })
+    };
 
     let js_future = JsFuture::from(js_sys::Promise::resolve(&promise));
 
@@ -327,17 +326,17 @@ fn send_length_and_payload(
     resolve: &js_sys::Function,
     reject: &js_sys::Function,
 ) {
-    let send_func_result = js_sys::Reflect::get(&web_socket, &JsString::from("send"))
+    let send_func_result = js_sys::Reflect::get(web_socket, &JsString::from("send"))
         .and_then(|send_func| send_func.dyn_into::<js_sys::Function>());
 
     match send_func_result {
         Ok(send_func) => {
-            if let Err(e) = send_func.call1(&web_socket, &length_js_value) {
+            if let Err(e) = send_func.call1(web_socket, length_js_value) {
                 log(&format!("Failed to send length buffer: {:?}", e));
                 reject.call1(&JsValue::NULL, &e).unwrap();
             } else {
                 // log("Length buffer sent successfully, now sending payload.");
-                send_payload(&send_func, &web_socket, &payload, &resolve, &reject);
+                send_payload(&send_func, web_socket, payload, resolve, reject);
             }
         }
         Err(e) => {
@@ -372,7 +371,7 @@ fn send_payload(
     reject: &js_sys::Function,
 ) {
     let payload_array = js_sys::Uint8Array::from(payload.as_slice());
-    if let Err(e) = send_func.call1(&web_socket, &payload_array) {
+    if let Err(e) = send_func.call1(web_socket, &payload_array) {
         log(&format!("Failed to send payload: {:?}", e));
         reject.call1(&JsValue::NULL, &e).unwrap();
     } else {
@@ -608,7 +607,7 @@ pub(crate) async fn send_request(
         .map_err(|e| Error::Serialization(format!("Failed to serialize request: {}", e)))?;
 
     thread_local! {
-        static WS: RefCell<Option<WebSocket>> = RefCell::new(None);
+        static WS: RefCell<Option<WebSocket>> = const { RefCell::new(None) };
     }
 
     if is_node() {
@@ -653,7 +652,7 @@ pub(crate) async fn send_request(
             let response = handle_websocket_connection(web_socket_ref, payload, request_id).await?;
             Ok(response)
         } else {
-            return Err(Error::WebSocketSend("WebSocket is not open".to_string()));
+            Err(Error::WebSocketSend("WebSocket is not open".to_string()))
         }
     }
 }
