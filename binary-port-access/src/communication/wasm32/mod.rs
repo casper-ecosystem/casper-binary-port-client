@@ -291,7 +291,7 @@ fn create_length_buffer(payload_length: u32) -> Vec<u8> {
     length_buffer
 }
 
-/// Sends the length of the payload followed by the payload itself over a WebSocket.
+/// Sends the length of the payload followed by the payload itself over the WebSocket.
 ///
 /// This function retrieves the WebSocket's `send` method and sends the specified
 /// length and payload. It first sends the length of the payload encoded as a
