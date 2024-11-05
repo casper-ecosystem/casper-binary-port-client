@@ -13,6 +13,8 @@ use node_tcp_helper::NODE_TCP_HELPER;
 #[cfg(target_arch = "wasm32")]
 use rand::Rng;
 #[cfg(target_arch = "wasm32")]
+use std::cell::RefCell;
+#[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{prelude::Closure, prelude::*, JsCast, JsValue};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen_futures::JsFuture;
@@ -195,147 +197,303 @@ async fn open_tcp_connection(
 /// for WebAssembly applications where WebSocket communication is required.
 #[cfg(target_arch = "wasm32")]
 async fn handle_websocket_connection(
-    web_socket: WebSocket,
+    web_socket: &WebSocket,
     payload: Vec<u8>,
     request_id: u16,
 ) -> Result<BinaryResponseAndRequest, Error> {
-    let promise = Promise::new(&mut |resolve, reject| {
-        let ws_clone = web_socket.clone();
-        let resolve_clone = resolve.clone(); // Clone to use later
-        let reject_clone = reject.clone(); // Clone to use later
+    let payload_length = payload.len() as u32;
+    let length_buffer = create_length_buffer(payload_length);
+    // log("Payload length buffer prepared.");
 
-        // Prepare length buffer using LENGTH_FIELD_SIZE
-        let payload_length = payload.len() as u32;
-        let mut length_buffer = vec![0; LENGTH_FIELD_SIZE];
-        length_buffer[..LENGTH_FIELD_SIZE].copy_from_slice(&payload_length.to_le_bytes());
+    let length_js_value = js_sys::Uint8Array::from(length_buffer.as_slice());
 
-        // log("Payload length buffer prepared.");
+    let promise: Promise;
+    // If socket is not opened
+    if web_socket.ready_state() != WebSocket::OPEN {
+        promise = Promise::new(&mut |resolve, reject| {
+            let web_socket_clone = web_socket.clone(); // Clone for the closure
+            let length_js_value = length_js_value.clone(); // Clone for the closure
+            let payload_clone = payload.clone(); // Clone for the closure
 
-        // Send the length buffer first
-        let length_js_value = js_sys::Uint8Array::from(length_buffer.as_slice());
+            // Set up onopen handler to send length and then payload
+            let onopen = {
+                Closure::wrap(Box::new(move || {
+                    send_length_and_payload(
+                        &web_socket_clone,
+                        &length_js_value,
+                        &payload_clone,
+                        &resolve,
+                        &reject,
+                    );
+                }) as Box<dyn FnMut()>)
+            };
 
-        let payload_clone = payload.clone(); // Clone the payload for sending
+            let web_socket_ref = web_socket.unchecked_ref::<WebSocket>();
+            web_socket_ref.set_onopen(Some(onopen.as_ref().unchecked_ref()));
+            onopen.forget(); // Prevent memory leak by forgetting the closure
+        });
+    }
+    // Socket is already opened
+    else {
+        promise = Promise::new(&mut |resolve, reject| {
+            let web_socket_clone = web_socket.clone(); // Clone for the closure
+            let length_js_value = length_js_value.clone(); // Clone for the closure
+            let payload_clone = payload.clone(); // Clone for the closure
 
-        // Set up onopen handler to send length and then payload
-        let onopen = Closure::wrap(Box::new(move || {
-            // log("WebSocket connection opened, attempting to send length buffer.");
-
-            // Use ws_clone in the closure directly
-            let send_func_result = js_sys::Reflect::get(&ws_clone, &JsString::from("send"))
-                .and_then(|send_func| send_func.dyn_into::<js_sys::Function>());
-
-            match send_func_result {
-                Ok(send_func) => {
-                    // Send length buffer
-                    if let Err(e) = send_func.call1(&ws_clone, &length_js_value) {
-                        log(&format!("Failed to send length buffer: {:?}", e));
-                        reject_clone.call1(&JsValue::NULL, &e).unwrap();
-                    } else {
-                        // log("Length buffer sent successfully, now sending payload.");
-
-                        // Send the payload after the length buffer has been sent
-                        let payload_array = js_sys::Uint8Array::from(payload_clone.as_slice());
-
-                        if let Err(e) = send_func.call1(&ws_clone, &payload_array) {
-                            log(&format!("Failed to send payload: {:?}", e));
-                            reject_clone.call1(&JsValue::NULL, &e).unwrap();
-                        } else {
-                            // log("Payload sent successfully, setting up message handler.");
-
-                            let onerror = {
-                                let reject_clone = reject_clone.clone(); // Clone for use in onerror
-                                Closure::wrap(Box::new(move |event: wasm_bindgen::JsValue| {
-                                    let error_msg = event
-                                        .as_string()
-                                        .unwrap_or_else(|| "WebSocket error".to_string());
-                                    log(&format!("WebSocket error: {}", error_msg));
-                                    reject_clone
-                                        .call1(&JsValue::NULL, &JsValue::from_str(&error_msg))
-                                        .unwrap();
-                                })
-                                    as Box<dyn FnMut(_)>)
-                            };
-
-                            ws_clone.set_onerror(Some(onerror.as_ref().unchecked_ref()));
-                            onerror.forget(); // Prevent memory leak by forgetting the closure
-
-                            let onmessage = {
-                                let resolve_clone = resolve_clone.clone(); // Clone for use in onmessage
-                                Closure::wrap(Box::new(move |event: MessageEvent| {
-                                    // log("Message received from WebSocket.");
-
-                                    // Convert the event data to Blob
-                                    let data: web_sys::Blob =
-                                        event.data().dyn_into::<web_sys::Blob>().unwrap();
-
-                                    // Create a FileReader to read the Blob
-                                    let file_reader = web_sys::FileReader::new().unwrap(); // Create FileReader
-                                    let resolve_clone = resolve_clone.clone(); // Clone for use in onload
-
-                                    // Set up the onload closure with the file_reader borrowed
-                                    let onload = {
-                                        let file_reader_clone = file_reader.clone(); // Clone here
-                                        Closure::wrap(Box::new(move |_: web_sys::ProgressEvent| {
-                                            // log("Blob read successfully, converting to Uint8Array.");
-
-                                            // Get the result of the FileReader as ArrayBuffer
-                                            let result = file_reader_clone.result().unwrap();
-                                            let array_buffer =
-                                                result.dyn_into::<js_sys::ArrayBuffer>().unwrap();
-                                            let uint8_array =
-                                                js_sys::Uint8Array::new(&array_buffer);
-
-                                            // Convert Uint8Array to Vec<u8>
-                                            let response_bytes = uint8_array.to_vec();
-
-                                            // log(&format!("Received bytes: {:?}", response_bytes));
-
-                                            // Resolve with binary response
-                                            resolve_clone
-                                                .call1(
-                                                    &JsValue::NULL,
-                                                    &wasm_bindgen::JsValue::from_serde(
-                                                        &response_bytes,
-                                                    )
-                                                    .unwrap_or_default(),
-                                                )
-                                                .unwrap();
-                                        })
-                                            as Box<dyn FnMut(_)>)
-                                    };
-
-                                    // Set up the onload event for the FileReader
-                                    file_reader.set_onload(Some(onload.as_ref().unchecked_ref()));
-                                    file_reader.read_as_array_buffer(&data).unwrap(); // Ensure read call
-                                    onload.forget(); // Prevent memory leak by forgetting the closure
-                                })
-                                    as Box<dyn FnMut(_)>)
-                            };
-                            ws_clone.set_onmessage(Some(onmessage.as_ref().unchecked_ref()));
-                            onmessage.forget(); // Prevent memory leak by forgetting the closure
-                        }
-                    }
-                }
-                Err(e) => {
-                    log("Failed to find WebSocket send function.");
-                    reject_clone.call1(&JsValue::NULL, &e).unwrap(); // Use the cloned reject
-                }
-            }
-        }) as Box<dyn FnMut()>);
-
-        let ws_ref = web_socket.unchecked_ref::<WebSocket>();
-        ws_ref.set_onopen(Some(onopen.as_ref().unchecked_ref()));
-        // log("WebSocket set_onopen event registered.");
-        onopen.forget(); // Prevent memory leak by forgetting the closure
-    });
+            // Directly send length and payload
+            send_length_and_payload(
+                &web_socket_clone,
+                &length_js_value,
+                &payload_clone,
+                &resolve,
+                &reject,
+            );
+        });
+    }
 
     let js_future = JsFuture::from(js_sys::Promise::resolve(&promise));
 
     // Await the resolved value from the promise
-    let onmessage = js_future
-        .await
-        .map_err(|e| Error::Response(format!("Failed to receive message: {:?}", e)))?;
+    let onmessage = js_future.await.map_err(|e| {
+        log(&format!("Failed to receive message: {:?}", e));
+        Error::Response(format!("Failed to receive message: {:?}", e))
+    })?;
 
+    let response_bytes = extract_response_bytes(onmessage)?;
+
+    // Read and process the response
+    let response_buf = read_response(response_bytes).await?;
+    // Now process the response using the request_id
+    process_response(response_buf, request_id).await
+}
+
+/// Creates a length buffer to represent the size of the payload.
+///
+/// This function initializes a buffer of fixed size, which is used to store
+/// the length of the payload in little-endian byte order. It ensures that
+/// the length can be correctly interpreted
+///
+/// # Parameters
+///
+/// - `payload_length`: The length of the payload to be encoded in the buffer,
+///   represented as a `u32`. This value is converted to a byte array and
+///   stored in the buffer.
+///
+/// # Returns
+///
+/// Returns a `Vec<u8>` containing the byte representation of the payload length,
+/// with the length stored in little-endian format. The size of the vector is
+/// determined by `LENGTH_FIELD_SIZE`.
+#[cfg(target_arch = "wasm32")]
+fn create_length_buffer(payload_length: u32) -> Vec<u8> {
+    let mut length_buffer = vec![0; LENGTH_FIELD_SIZE];
+    length_buffer[..LENGTH_FIELD_SIZE].copy_from_slice(&payload_length.to_le_bytes());
+    length_buffer
+}
+
+/// Sends the length of the payload followed by the payload itself over a WebSocket.
+///
+/// This function retrieves the WebSocket's `send` method and sends the specified
+/// length and payload. It first sends the length of the payload encoded as a
+/// `Uint8Array`, and then, upon successful transmission, it invokes the
+/// `send_payload` function to send the actual payload data.
+///
+/// # Parameters
+///
+/// - `web_socket`: A reference to the `WebSocket` instance to which the data will be sent.
+/// - `length_js_value`: A reference to a `Uint8Array` that contains the length of the payload,
+///   which will be sent first.
+/// - `payload`: A reference to the `Vec<u8>` containing the actual payload data
+///   to be sent after the length.
+/// - `resolve`: A reference to a JavaScript function that will be called to resolve the
+///   promise if the send operation is successful.
+/// - `reject`: A reference to a JavaScript function that will be called to reject the
+///   promise if an error occurs during the send operation.
+///
+/// # Behavior
+///
+/// - If the WebSocket's `send` method is successfully retrieved and called with the
+///   `length_js_value`, the function proceeds to send the actual payload using the
+///   `send_payload` function.
+/// - If an error occurs while sending the length, it logs the error and calls the
+///   `reject` function, passing the error as an argument.
+/// - If the `send` method cannot be found, it logs an error message and calls the
+///   `reject` function with the corresponding error.
+#[cfg(target_arch = "wasm32")]
+fn send_length_and_payload(
+    web_socket: &WebSocket,
+    length_js_value: &js_sys::Uint8Array,
+    payload: &Vec<u8>,
+    resolve: &js_sys::Function,
+    reject: &js_sys::Function,
+) {
+    let send_func_result = js_sys::Reflect::get(&web_socket, &JsString::from("send"))
+        .and_then(|send_func| send_func.dyn_into::<js_sys::Function>());
+
+    match send_func_result {
+        Ok(send_func) => {
+            if let Err(e) = send_func.call1(&web_socket, &length_js_value) {
+                log(&format!("Failed to send length buffer: {:?}", e));
+                reject.call1(&JsValue::NULL, &e).unwrap();
+            } else {
+                // log("Length buffer sent successfully, now sending payload.");
+                send_payload(&send_func, &web_socket, &payload, &resolve, &reject);
+            }
+        }
+        Err(e) => {
+            log("Failed to find WebSocket send function.");
+            reject.call1(&JsValue::NULL, &e).unwrap(); // Use the cloned reject
+        }
+    }
+}
+
+/// Sends the payload data over the specified WebSocket.
+///
+/// This function converts the provided payload into a `Uint8Array` and uses the
+/// provided `send_func` to send it over the WebSocket. If the send operation is
+/// successful, it sets up a message handler; otherwise, it logs the error and
+/// calls the provided reject function.
+///
+/// # Parameters
+///
+/// - `send_func`: A reference to the JavaScript function used to send data over the WebSocket.
+/// - `web_socket`: A reference to the `WebSocket` instance through which the payload will be sent.
+/// - `payload`: A reference to a `Vec<u8>` containing the data to be sent.
+/// - `resolve`: A reference to a JavaScript function that will be called to resolve the
+///   promise if the send operation is successful.
+/// - `reject`: A reference to a JavaScript function that will be called to reject the
+///   promise if an error occurs during the send operation.
+#[cfg(target_arch = "wasm32")]
+fn send_payload(
+    send_func: &js_sys::Function,
+    web_socket: &WebSocket,
+    payload: &Vec<u8>,
+    resolve: &js_sys::Function,
+    reject: &js_sys::Function,
+) {
+    let payload_array = js_sys::Uint8Array::from(payload.as_slice());
+    if let Err(e) = send_func.call1(&web_socket, &payload_array) {
+        log(&format!("Failed to send payload: {:?}", e));
+        reject.call1(&JsValue::NULL, &e).unwrap();
+    } else {
+        // log("Payload sent successfully, setting up message handler.");
+        setup_message_handler(web_socket, resolve, reject);
+    }
+}
+
+/// Sets up message and error handlers for the specified WebSocket.
+///
+/// This function configures the WebSocket to handle incoming messages and errors.
+/// It defines two closures: one for handling WebSocket errors and another for
+/// processing incoming messages. If an error occurs, it logs the error and calls
+/// the provided reject function. When a message is received, it calls the
+/// provided resolve function to process the message.
+///
+/// # Parameters
+///
+/// - `web_socket`: A reference to the `WebSocket` instance for which the handlers are being set up.
+/// - `resolve`: A reference to a JavaScript function that will be called to resolve the
+///   promise when a message is received.
+/// - `reject`: A reference to a JavaScript function that will be called to reject the
+///   promise if an error occurs during WebSocket communication.
+#[cfg(target_arch = "wasm32")]
+fn setup_message_handler(
+    web_socket: &WebSocket,
+    resolve: &js_sys::Function,
+    reject: &js_sys::Function,
+) {
+    let onerror = {
+        let reject = reject.clone(); // Clone for use in onerror
+        Closure::wrap(Box::new(move |event: wasm_bindgen::JsValue| {
+            let error_msg = event
+                .as_string()
+                .unwrap_or_else(|| "WebSocket error".to_string());
+            log(&format!("WebSocket error: {}", error_msg));
+            reject
+                .call1(&JsValue::NULL, &JsValue::from_str(&error_msg))
+                .unwrap();
+        }) as Box<dyn FnMut(_)>)
+    };
+
+    web_socket.set_onerror(Some(onerror.as_ref().unchecked_ref()));
+    onerror.forget(); // Prevent memory leak by forgetting the closure
+
+    let onmessage = {
+        let resolve = resolve.clone(); // Clone for use in onmessage
+        Closure::wrap(Box::new(move |event: MessageEvent| {
+            // log("Message received from WebSocket.");
+            handle_message(event, resolve.clone());
+        }) as Box<dyn FnMut(_)>)
+    };
+    web_socket.set_onmessage(Some(onmessage.as_ref().unchecked_ref()));
+    onmessage.forget(); // Prevent memory leak by forgetting the closure
+}
+
+/// Handles incoming messages from the WebSocket.
+///
+/// This function is triggered when a message event occurs. It extracts the data
+/// from the message event, which is expected to be a `Blob`. It then uses a
+/// `FileReader` to read the `Blob` data as an `ArrayBuffer`. Upon successful
+/// reading, it converts the data to a `Uint8Array` and resolves the provided
+/// function with the binary response.
+///
+/// # Parameters
+///
+/// - `event`: The `MessageEvent` that contains the incoming data from the WebSocket.
+/// - `resolve`: A reference to a JavaScript function that will be called with the
+///   binary response once the `Blob` data has been successfully read.
+#[cfg(target_arch = "wasm32")]
+fn handle_message(event: MessageEvent, resolve: js_sys::Function) {
+    // Convert the event data to Blob
+    let data: web_sys::Blob = event.data().dyn_into::<web_sys::Blob>().unwrap();
+
+    // Create a FileReader to read the Blob
+    let file_reader = web_sys::FileReader::new().unwrap(); // Create FileReader
+    let resolve = resolve.clone(); // Clone for use in onload
+
+    // Set up the onload closure
+    let onload = {
+        let file_reader = file_reader.clone(); // Clone here
+        Closure::wrap(Box::new(move |_: web_sys::ProgressEvent| {
+            // log("Blob read successfully, converting to Uint8Array.");
+            let result = file_reader.result().unwrap();
+            let array_buffer = result.dyn_into::<js_sys::ArrayBuffer>().unwrap();
+            let uint8_array = js_sys::Uint8Array::new(&array_buffer);
+            let response_bytes = uint8_array.to_vec();
+            // log(&format!("Received bytes: {:?}", response_bytes));
+
+            // Resolve with binary response
+            resolve
+                .call1(
+                    &JsValue::NULL,
+                    &wasm_bindgen::JsValue::from_serde(&response_bytes).unwrap_or_default(),
+                )
+                .unwrap();
+        }) as Box<dyn FnMut(_)>)
+    };
+
+    // Set up the onload event for the FileReader
+    file_reader.set_onload(Some(onload.as_ref().unchecked_ref()));
+    file_reader.read_as_array_buffer(&data).unwrap(); // Ensure read call
+    onload.forget(); // Prevent memory leak by forgetting the closure
+}
+
+/// Extracts response bytes from a JavaScript value.
+///
+/// This function takes a JavaScript value expected to be an `Array`, converts it
+/// into a Rust vector of bytes, and returns it. If the conversion fails, it returns
+/// an `Error` indicating that the expected format was not met.
+///
+/// # Parameters
+///
+/// - `onmessage`: A `JsValue` that should contain the response data in the form of a JavaScript `Array`.
+///
+/// # Returns
+///
+/// A `Result<Vec<u8>, Error>`, where the `Ok` variant contains the extracted bytes as a `Vec<u8>`,
+/// and the `Err` variant contains an `Error` if the conversion fails.
+#[cfg(target_arch = "wasm32")]
+fn extract_response_bytes(onmessage: JsValue) -> Result<Vec<u8>, Error> {
     let response_bytes = onmessage
         .dyn_into::<js_sys::Array>()
         .map_err(|_| Error::Response("Expected Array format for TCP response data".to_string()))?
@@ -343,11 +501,7 @@ async fn handle_websocket_connection(
         .into_iter()
         .map(|val| val.as_f64().unwrap_or(0.0) as u8)
         .collect::<Vec<u8>>();
-
-    // Read and process the response
-    let response_buf = read_response(response_bytes).await?;
-    // Now process the response using the request_id
-    process_response(response_buf, request_id).await
+    Ok(response_bytes)
 }
 
 /// Reads and processes a response from a byte vector, extracting the payload
@@ -453,6 +607,10 @@ pub(crate) async fn send_request(
     let payload = encode_request(&request, Some(request_id))
         .map_err(|e| Error::Serialization(format!("Failed to serialize request: {}", e)))?;
 
+    thread_local! {
+        static WS: RefCell<Option<WebSocket>> = RefCell::new(None);
+    }
+
     if is_node() {
         // In Node.js, use raw TCP with the `net` module for direct connection
         let tcp_result = open_tcp_connection(node_address, payload.clone(), request_id).await;
@@ -461,21 +619,41 @@ pub(crate) async fn send_request(
             Err(e) => Err(Error::Response(format!("TCP connection failed: {:?}", e))),
         }
     } else {
-        // In the browser or non-Node.js environments, use WebSocket
-        // Note that browsers have CORS (Cross-Origin Resource Sharing) restrictions,
-        // so the WebSocket requests should/may be addressed to a WebSocket proxy that
-        // redirects the requests to the node's binary port. Typically "ws://127.0.0.1:8181" proxied to binary "127.0.0.1:28101"
-        // Ensure node_address does not already contain "ws://"
-        let ws_url = if node_address.starts_with("ws://") {
-            node_address.to_string() // Use the existing node_address if it already contains the prefix
+        let web_socket_url = if node_address.starts_with("ws://") {
+            node_address.to_string()
         } else {
             format!("ws://{}", node_address)
         };
-        let web_socket = WebSocket::new(&ws_url).map_err(|e| {
-            Error::WebSocketCreation(format!("Failed to create WebSocket: {:?}", e))
-        })?;
 
-        let response = handle_websocket_connection(web_socket, payload, request_id).await?;
-        Ok(response)
+        // Check if WebSocket is already initialized and if it is open
+        let mut web_socket = WS.with(|ws| ws.borrow_mut().clone());
+
+        if web_socket.is_none()
+            || web_socket.as_ref().unwrap().ready_state() == WebSocket::CLOSED
+            || web_socket.as_ref().unwrap().ready_state() == WebSocket::CLOSING
+        {
+            // Create a new WebSocket if it doesn't exist or is not open
+            web_socket = Some(WebSocket::new(&web_socket_url).map_err(|e| {
+                Error::WebSocketCreation(format!("Failed to create WebSocket: {:?}", e))
+            })?);
+
+            // Setup error and close event handlers to update WebSocket state
+            let web_socket_clone = web_socket.as_ref().unwrap().clone();
+            // Save the new WebSocket in the thread-local variable
+            WS.with(|ws| {
+                *ws.borrow_mut() = Some(web_socket_clone);
+            });
+        }
+
+        let web_socket_ref = web_socket.as_ref().unwrap();
+
+        if web_socket_ref.ready_state() == WebSocket::CONNECTING
+            || web_socket_ref.ready_state() == WebSocket::OPEN
+        {
+            let response = handle_websocket_connection(web_socket_ref, payload, request_id).await?;
+            Ok(response)
+        } else {
+            return Err(Error::WebSocketSend("WebSocket is not open".to_string()));
+        }
     }
 }
