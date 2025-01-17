@@ -31,7 +31,7 @@ outdated:
 	cargo outdated || cargo install cargo-outdated
 
 # Run a full CI-style check (build, fmt, clippy, test)
-ci-check: fmt lint lint-wasm test
+ci-check: fmt-check lint lint-wasm test
 
 # Clean build artifacts
 clean:

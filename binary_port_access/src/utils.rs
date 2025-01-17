@@ -3,7 +3,9 @@ use casper_binary_port::{
     GlobalStateQueryResult, GlobalStateRequest, InformationRequest, InformationRequestTag,
     RecordId, RewardResponse,
 };
-use casper_types::{bytesrepr::ToBytes, GlobalStateIdentifier, Key, PublicKey};
+use casper_types::{
+    bytesrepr::ToBytes, system::auction::DelegatorKind, GlobalStateIdentifier, Key, PublicKey,
+};
 
 use crate::{
     communication::{self, parse_response},
@@ -37,7 +39,7 @@ pub(crate) async fn delegator_reward_by_era_identifier(
         InformationRequest::Reward {
             era_identifier: Some(era_identifier),
             validator: Box::new(validator_key),
-            delegator: Some(Box::new(delegator_key)),
+            delegator: Some(Box::new(DelegatorKind::PublicKey(delegator_key))),
         }
         .to_bytes()?
         .as_slice(),
