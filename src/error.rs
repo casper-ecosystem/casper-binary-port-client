@@ -37,4 +37,11 @@ pub(crate) enum Error {
     InvalidStateIdentifier,
     #[error(transparent)]
     JsonSerialization(#[from] serde_json::Error),
+    #[error("need either raw hex-encoded bytes or filename to binary file")]
+    EitherHexOrFileRequired,
+    #[error("error when interacting with file (#{file_path}). Details: #{err}")]
+    FromFile {
+        file_path: String,
+        err: std::io::Error,
+    },
 }

@@ -35,8 +35,16 @@ pub(crate) async fn send_request(
     node_address: &str,
     request: BinaryRequest,
 ) -> Result<BinaryResponseAndRequest, Error> {
-    let payload =
-        BinaryMessage::new(encode_request(&request).expect("should always serialize a request"));
+    let raw_bytes = encode_request(&request).expect("should always serialize a request");
+    send_raw(node_address, raw_bytes).await
+}
+
+// TODO[RC]: Into "communication" module
+pub(crate) async fn send_raw(
+    node_address: &str,
+    bytes: Vec<u8>,
+) -> Result<BinaryResponseAndRequest, Error> {
+    let payload = BinaryMessage::new(bytes);
 
     let mut client = connect_to_node(node_address).await?;
     client.send(payload).await?;
