@@ -8,8 +8,9 @@ use casper_types::{
     bytesrepr::{self, FromBytes, ToBytes},
     ProtocolVersion,
 };
+use std::sync::atomic::AtomicU16;
 #[cfg(not(target_arch = "wasm32"))]
-use rand::Rng;
+use std::sync::atomic::Ordering;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Duration;
 #[cfg(not(target_arch = "wasm32"))]
@@ -24,6 +25,8 @@ pub(crate) const SUPPORTED_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::
 pub(crate) const LENGTH_FIELD_SIZE: usize = 4;
 #[cfg(not(target_arch = "wasm32"))]
 const TIMEOUT_DURATION: Duration = Duration::from_secs(5);
+
+pub static COUNTER: AtomicU16 = AtomicU16::new(0);
 
 /// Establishes an asynchronous TCP connection to a specified node address.
 ///
@@ -193,7 +196,8 @@ pub(crate) async fn send_request(
     node_address: &str,
     request: BinaryRequest,
 ) -> Result<BinaryResponseAndRequest, Error> {
-    let request_id = rand::thread_rng().gen::<u16>();
+    let request_id = COUNTER.fetch_add(1, Ordering::SeqCst); // Atomically increment the counter
+
     let payload =
         encode_request(&request, Some(request_id)).expect("should always serialize a request");
     let mut client = connect_to_node(node_address).await?;
@@ -353,17 +357,16 @@ pub(crate) async fn process_response(
     }
 
     // Extract Request ID from the response
-    let _request_id = u16::from_le_bytes(
+    let response_request_id = u16::from_le_bytes(
         response_buf[REQUEST_ID_START..REQUEST_ID_END]
             .try_into()
             .expect("Failed to extract Request ID"),
     );
 
-    // Check if request_id matches _request_id and return an error if not
-    if request_id != _request_id {
+    // Check if request_id matches response_request_id and return an error if not
+    if request_id != response_request_id {
         return Err(Error::Response(format!(
-            "Request ID mismatch: expected {}, got {}",
-            request_id, _request_id
+            "Request ID mismatch: expected {request_id}, got {response_request_id}"
         )));
     }
 

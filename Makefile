@@ -10,6 +10,9 @@ all: build
 build:
 	cargo build
 
+build-for-release:
+	cargo build --release
+
 # Run the tests
 test:
 	cargo test --all-targets

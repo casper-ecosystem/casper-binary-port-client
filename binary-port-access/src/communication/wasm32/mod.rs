@@ -1,30 +1,16 @@
-#[cfg(target_arch = "wasm32")]
-use crate::communication::common::{encode_request, process_response, LENGTH_FIELD_SIZE};
-#[cfg(target_arch = "wasm32")]
+use crate::communication::common::{encode_request, process_response, COUNTER, LENGTH_FIELD_SIZE};
 use crate::Error;
-#[cfg(target_arch = "wasm32")]
 use casper_binary_port::{BinaryRequest, BinaryResponseAndRequest};
-#[cfg(target_arch = "wasm32")]
 use gloo_utils::format::JsValueSerdeExt;
-#[cfg(target_arch = "wasm32")]
 use js_sys::{JsString, Promise, Reflect};
-#[cfg(target_arch = "wasm32")]
-use node_tcp_helper::NODE_TCP_HELPER;
-#[cfg(target_arch = "wasm32")]
-use rand::Rng;
-#[cfg(target_arch = "wasm32")]
+use node_tcp_helper::generate_tcp_script;
 use std::cell::RefCell;
-#[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{prelude::Closure, prelude::*, JsCast, JsValue};
-#[cfg(target_arch = "wasm32")]
 use wasm_bindgen_futures::JsFuture;
-#[cfg(target_arch = "wasm32")]
 use web_sys::{MessageEvent, WebSocket};
-
-#[cfg(target_arch = "wasm32")]
 pub mod node_tcp_helper;
+use std::sync::atomic::Ordering;
 
-#[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = console, js_name = log)]
@@ -32,14 +18,9 @@ extern "C" {
 }
 /// Logs an error message, prefixing it with "error wasm" and sends it to the console in JavaScript when running in a WebAssembly environment.
 /// When running outside WebAssembly, it prints the error message to the standard output.
-#[cfg(target_arch = "wasm32")]
 fn log(s: &str) {
-    #[cfg(target_arch = "wasm32")]
     let prefixed_s = format!("log wasm {}", s);
-    #[cfg(target_arch = "wasm32")]
     log_with_prefix(&prefixed_s);
-    #[cfg(not(target_arch = "wasm32"))]
-    println!("{}", s);
 }
 
 /// Determines if the current environment is Node.js.
@@ -57,7 +38,6 @@ fn log(s: &str) {
 ///
 /// This function is compiled only when targeting the `wasm32` architecture,
 /// ensuring that it is not included in builds for other targets.
-#[cfg(target_arch = "wasm32")]
 fn is_node() -> bool {
     // Check if 'process' exists and if it has 'versions' property (which is present in Node.js)
     js_sys::global()
@@ -104,7 +84,6 @@ fn is_node() -> bool {
 ///
 /// This function is only compiled for the `wasm32` target, ensuring that
 /// it does not affect builds for other architectures.
-#[cfg(target_arch = "wasm32")]
 async fn open_tcp_connection(
     node_address: &str,
     payload: Vec<u8>,
@@ -121,16 +100,14 @@ async fn open_tcp_connection(
         .ok_or_else(|| Error::Response("Missing port".to_string()))?;
 
     // Prepare the payload buffer
-    let buffer_payload = &format!("{:?}", payload);
+    let buffer_payload = &format!("{payload:?}");
 
     let sanitized_buffer_payload = sanitize_input(buffer_payload);
     let sanitized_host = sanitize_input(host);
     let sanitized_port = sanitize_input(port);
 
-    let tcp_script = NODE_TCP_HELPER
-        .replace("{buffer_payload}", &sanitized_buffer_payload)
-        .replace("{host}", &sanitized_host)
-        .replace("{port}", &sanitized_port);
+    let tcp_script =
+        generate_tcp_script(&sanitized_host, &sanitized_port, &sanitized_buffer_payload);
 
     // Execute the script in JavaScript context using eval (tcp_script is local but it requires "require" Js module not available in a classic function js_sys::Function)
     let tcp_promise: Promise = js_sys::eval(&tcp_script)
@@ -149,13 +126,10 @@ async fn open_tcp_connection(
     let js_future = JsFuture::from(tcp_promise);
     let tcp_response = js_future
         .await
-        .map_err(|e| Error::Response(format!("TCP connection promise failed: {:?}", e)))?;
+        .map_err(|e| Error::Response(format!("TCP connection promise failed: {e:?}")))?;
 
     // Since the resolved value is a Buffer, convert it to a byte slice
     let response_bytes = js_sys::Uint8Array::new(&tcp_response).to_vec();
-
-    // Log the received response bytes for debugging
-    // log(&format!("Received response data: {:?}", response_bytes));
 
     // Read and process the response
     let response_buf = read_response(response_bytes).await?;
@@ -195,7 +169,6 @@ async fn open_tcp_connection(
 ///
 /// This function is only compiled for the `wasm32` target, making it suitable
 /// for WebAssembly applications where WebSocket communication is required.
-#[cfg(target_arch = "wasm32")]
 async fn handle_websocket_connection(
     web_socket: &WebSocket,
     payload: Vec<u8>,
@@ -203,7 +176,6 @@ async fn handle_websocket_connection(
 ) -> Result<BinaryResponseAndRequest, Error> {
     let payload_length = payload.len() as u32;
     let length_buffer = create_length_buffer(payload_length);
-    // log("Payload length buffer prepared.");
 
     let length_js_value = js_sys::Uint8Array::from(length_buffer.as_slice());
 
@@ -283,7 +255,6 @@ async fn handle_websocket_connection(
 /// Returns a `Vec<u8>` containing the byte representation of the payload length,
 /// with the length stored in little-endian format. The size of the vector is
 /// determined by `LENGTH_FIELD_SIZE`.
-#[cfg(target_arch = "wasm32")]
 fn create_length_buffer(payload_length: u32) -> Vec<u8> {
     let mut length_buffer = vec![0; LENGTH_FIELD_SIZE];
     length_buffer[..LENGTH_FIELD_SIZE].copy_from_slice(&payload_length.to_le_bytes());
@@ -318,7 +289,6 @@ fn create_length_buffer(payload_length: u32) -> Vec<u8> {
 ///   `reject` function, passing the error as an argument.
 /// - If the `send` method cannot be found, it logs an error message and calls the
 ///   `reject` function with the corresponding error.
-#[cfg(target_arch = "wasm32")]
 fn send_length_and_payload(
     web_socket: &WebSocket,
     length_js_value: &js_sys::Uint8Array,
@@ -335,7 +305,6 @@ fn send_length_and_payload(
                 log(&format!("Failed to send length buffer: {:?}", e));
                 reject.call1(&JsValue::NULL, &e).unwrap();
             } else {
-                // log("Length buffer sent successfully, now sending payload.");
                 send_payload(&send_func, web_socket, payload, resolve, reject);
             }
         }
@@ -362,7 +331,6 @@ fn send_length_and_payload(
 ///   promise if the send operation is successful.
 /// - `reject`: A reference to a JavaScript function that will be called to reject the
 ///   promise if an error occurs during the send operation.
-#[cfg(target_arch = "wasm32")]
 fn send_payload(
     send_func: &js_sys::Function,
     web_socket: &WebSocket,
@@ -375,7 +343,6 @@ fn send_payload(
         log(&format!("Failed to send payload: {:?}", e));
         reject.call1(&JsValue::NULL, &e).unwrap();
     } else {
-        // log("Payload sent successfully, setting up message handler.");
         setup_message_handler(web_socket, resolve, reject);
     }
 }
@@ -395,7 +362,6 @@ fn send_payload(
 ///   promise when a message is received.
 /// - `reject`: A reference to a JavaScript function that will be called to reject the
 ///   promise if an error occurs during WebSocket communication.
-#[cfg(target_arch = "wasm32")]
 fn setup_message_handler(
     web_socket: &WebSocket,
     resolve: &js_sys::Function,
@@ -420,7 +386,6 @@ fn setup_message_handler(
     let onmessage = {
         let resolve = resolve.clone(); // Clone for use in onmessage
         Closure::wrap(Box::new(move |event: MessageEvent| {
-            // log("Message received from WebSocket.");
             handle_message(event, resolve.clone());
         }) as Box<dyn FnMut(_)>)
     };
@@ -441,7 +406,6 @@ fn setup_message_handler(
 /// - `event`: The `MessageEvent` that contains the incoming data from the WebSocket.
 /// - `resolve`: A reference to a JavaScript function that will be called with the
 ///   binary response once the `Blob` data has been successfully read.
-#[cfg(target_arch = "wasm32")]
 fn handle_message(event: MessageEvent, resolve: js_sys::Function) {
     // Convert the event data to Blob
     let data: web_sys::Blob = event.data().dyn_into::<web_sys::Blob>().unwrap();
@@ -454,12 +418,10 @@ fn handle_message(event: MessageEvent, resolve: js_sys::Function) {
     let onload = {
         let file_reader = file_reader.clone(); // Clone here
         Closure::wrap(Box::new(move |_: web_sys::ProgressEvent| {
-            // log("Blob read successfully, converting to Uint8Array.");
             let result = file_reader.result().unwrap();
             let array_buffer = result.dyn_into::<js_sys::ArrayBuffer>().unwrap();
             let uint8_array = js_sys::Uint8Array::new(&array_buffer);
             let response_bytes = uint8_array.to_vec();
-            // log(&format!("Received bytes: {:?}", response_bytes));
 
             // Resolve with binary response
             resolve
@@ -491,7 +453,6 @@ fn handle_message(event: MessageEvent, resolve: js_sys::Function) {
 ///
 /// A `Result<Vec<u8>, Error>`, where the `Ok` variant contains the extracted bytes as a `Vec<u8>`,
 /// and the `Err` variant contains an `Error` if the conversion fails.
-#[cfg(target_arch = "wasm32")]
 fn extract_response_bytes(onmessage: JsValue) -> Result<Vec<u8>, Error> {
     let response_bytes = onmessage
         .dyn_into::<js_sys::Array>()
@@ -537,7 +498,6 @@ fn extract_response_bytes(onmessage: JsValue) -> Result<Vec<u8>, Error> {
 /// a `u32` for Casper binary protocol). This function is only compiled for the `wasm32` target,
 /// making it suitable for WebAssembly applications where binary data
 /// processing is required.
-#[cfg(target_arch = "wasm32")]
 async fn read_response(response_bytes: Vec<u8>) -> Result<Vec<u8>, Error> {
     // Ensure we have enough bytes for the length field
     if response_bytes.len() < LENGTH_FIELD_SIZE {
@@ -597,12 +557,12 @@ async fn read_response(response_bytes: Vec<u8>) -> Result<Vec<u8>, Error> {
 ///
 /// This function is only compiled for the `wasm32` target, making it suitable
 /// for WebAssembly applications where communication with a node server is required.
-#[cfg(target_arch = "wasm32")]
 pub(crate) async fn send_request(
     node_address: &str,
     request: BinaryRequest,
 ) -> Result<BinaryResponseAndRequest, Error> {
-    let request_id = rand::thread_rng().gen::<u16>();
+    let request_id = COUNTER.fetch_add(1, Ordering::SeqCst); // Atomically increment the counter
+
     let payload = encode_request(&request, Some(request_id))
         .map_err(|e| Error::Serialization(format!("Failed to serialize request: {}", e)))?;
 
