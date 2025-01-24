@@ -1,3 +1,8 @@
+#[cfg(not(target_arch = "wasm32"))]
+use crate::communication::common::send_request;
+#[cfg(target_arch = "wasm32")]
+use crate::communication::wasm32::send_request;
+use crate::{communication::common::parse_response, Error};
 use casper_binary_port::{
     BinaryRequest, BinaryResponseAndRequest, EraIdentifier, GetRequest, GlobalStateEntityQualifier,
     GlobalStateQueryResult, GlobalStateRequest, InformationRequest, InformationRequestTag,
@@ -6,12 +11,6 @@ use casper_binary_port::{
 use casper_types::{
     bytesrepr::ToBytes, system::auction::DelegatorKind, GlobalStateIdentifier, Key, PublicKey,
 };
-
-#[cfg(not(target_arch = "wasm32"))]
-use crate::communication::common::send_request;
-#[cfg(target_arch = "wasm32")]
-use crate::communication::wasm32::send_request;
-use crate::{communication::common::parse_response, Error};
 
 pub(crate) fn make_information_get_request(
     tag: InformationRequestTag,
