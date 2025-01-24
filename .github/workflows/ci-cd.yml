@@ -21,7 +21,12 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+          profile: minimal
+          components: rustfmt, clippy
           target: wasm32-unknown-unknown
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
 
       - name: Install dependencies
         run: |
