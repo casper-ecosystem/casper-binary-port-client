@@ -18,7 +18,7 @@ test:
 	cargo test --all-targets
 
 # Run clippy (linter) on all targets
-lint:
+lint: lint-wasm
 	cargo clippy --all-targets -- -D warnings
 
 # Run clippy on wasm32-unknown-unknown target

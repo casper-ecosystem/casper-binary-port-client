@@ -35,11 +35,8 @@ jobs:
       - name: Run tests
         run: make test
 
-      - name: Run Clippy linter
+      - name: Run Clippy linter and for wasm target
         run: make lint
-
-      - name: Run Clippy linter for wasm target
-        run: make lint-wasm
 
       - name: Check code formatting
         run: make fmt-check
