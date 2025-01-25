@@ -42,6 +42,10 @@ pub enum Error {
     #[error("Failed to create WebSocket: {0}")]
     WebSocketSend(String),
 
+    /// WebSocket close error.
+    #[error("Failed to create WebSocket: {0}")]
+    WebSocketClose(String),
+
     /// JavaScript-related error.
     #[error("JavaScript error: {0}")]
     JsError(String),

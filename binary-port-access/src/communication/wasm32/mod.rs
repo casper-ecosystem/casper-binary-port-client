@@ -587,6 +587,18 @@ pub(crate) async fn send_request(
         // Check if WebSocket is already initialized and if it is open
         let mut web_socket = WS.with(|ws| ws.borrow_mut().clone());
 
+        // Check if curl web_socket_url is still current_url
+        if web_socket.is_some() {
+            let current_url = web_socket.as_ref().unwrap().url();
+
+            if current_url != web_socket_url {
+                web_socket.as_ref().unwrap().close().map_err(|e| {
+                    Error::WebSocketClose(format!("Failed to close WebSocket: {:?}", e))
+                })?;
+                web_socket = None;
+            }
+        }
+
         if web_socket.is_none()
             || web_socket.as_ref().unwrap().ready_state() == WebSocket::CLOSED
             || web_socket.as_ref().unwrap().ready_state() == WebSocket::CLOSING
