@@ -39,7 +39,6 @@ pub(crate) async fn send_request(
     send_raw(node_address, raw_bytes).await
 }
 
-// TODO[RC]: Into "communication" module
 pub(crate) async fn send_raw(
     node_address: &str,
     bytes: Vec<u8>,
