@@ -614,6 +614,27 @@ pub(crate) async fn send_request(
         if web_socket.is_some() {
             let current_url = web_socket.as_ref().unwrap().url();
 
+            let web_socket_url = if web_socket_url.contains("?") {
+                // Add `/` only if there’s a query string but no `/` after the port
+                let parts: Vec<&str> = web_socket_url.splitn(2, '?').collect();
+                let base = parts[0];
+                let query = parts[1];
+
+                if base.ends_with('/') {
+                    web_socket_url.clone()
+                } else if base.contains(':') {
+                    format!("{}/?{}", base, query)
+                } else {
+                    web_socket_url.clone()
+                }
+            } else {
+                // If no query string, just ensure `/` exists
+                if web_socket_url.ends_with('/') {
+                    web_socket_url.clone()
+                } else {
+                    format!("{}/", web_socket_url)
+                }
+            };
             if current_url != web_socket_url {
                 web_socket.as_ref().unwrap().close().map_err(|e| {
                     Error::WebSocketClose(format!("Failed to close WebSocket: {:?}", e))
