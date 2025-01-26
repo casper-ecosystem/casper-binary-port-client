@@ -182,9 +182,30 @@ async fn handle_websocket_connection(
     // If socket is not opened
     let promise: Promise = if web_socket.ready_state() != WebSocket::OPEN {
         Promise::new(&mut |resolve, reject| {
-            let web_socket_clone = web_socket.clone(); // Clone for the closure
-            let length_js_value = length_js_value.clone(); // Clone for the closure
-            let payload_clone = payload.clone(); // Clone for the closure
+            let web_socket_clone = web_socket.clone(); // Clone for the open closure
+            let length_js_value = length_js_value.clone(); // Clone for the open closure
+            let payload_clone = payload.clone(); // Clone for the open closure
+
+            let reject_clone = reject.clone(); // Clone for the onerror closure
+            let onerror = Closure::wrap(Box::new(move || {
+                log("WebSocket encountered an error.");
+                reject_clone
+                    .call1(&JsValue::NULL, &"WebSocket error".into())
+                    .unwrap();
+            }) as Box<dyn FnMut()>);
+
+            let reject_clone = reject.clone(); // Clone for the onclose closure
+            let onclose = Closure::wrap(Box::new(move || {
+                log("WebSocket was closed");
+                reject_clone
+                    .call1(&JsValue::NULL, &"WebSocket closed".into())
+                    .unwrap();
+            }) as Box<dyn FnMut()>);
+
+            web_socket_clone.set_onerror(Some(onerror.as_ref().unchecked_ref()));
+            web_socket_clone.set_onclose(Some(onclose.as_ref().unchecked_ref()));
+            onerror.forget(); // Prevent memory leak by forgetting the closure
+            onclose.forget(); // Prevent memory leak by forgetting the closure
 
             // Set up onopen handler to send length and then payload
             let onopen = {
@@ -198,9 +219,7 @@ async fn handle_websocket_connection(
                     );
                 }) as Box<dyn FnMut()>)
             };
-
-            let web_socket_ref = web_socket.unchecked_ref::<WebSocket>();
-            web_socket_ref.set_onopen(Some(onopen.as_ref().unchecked_ref()));
+            web_socket.set_onopen(Some(onopen.as_ref().unchecked_ref()));
             onopen.forget(); // Prevent memory leak by forgetting the closure
         })
     }
@@ -221,21 +240,25 @@ async fn handle_websocket_connection(
             );
         })
     };
-
     let js_future = JsFuture::from(js_sys::Promise::resolve(&promise));
 
     // Await the resolved value from the promise
-    let onmessage = js_future.await.map_err(|e| {
-        log(&format!("Failed to receive message: {:?}", e));
-        Error::Response(format!("Failed to receive message: {:?}", e))
-    })?;
-
-    let response_bytes = extract_response_bytes(onmessage)?;
-
-    // Read and process the response
-    let response_buf = read_response(response_bytes).await?;
-    // Now process the response using the request_id
-    process_response(response_buf, request_id).await
+    match js_future.await {
+        Ok(onmessage) => {
+            // Read and process the response
+            let response_bytes = extract_response_bytes(onmessage)?;
+            let response_buf = read_response(response_bytes).await?;
+            // Now process the response using the request_id
+            process_response(response_buf, request_id).await
+        }
+        Err(e) => {
+            log(&format!("Promise was rejected or failed: {:?}", e));
+            Err(Error::Response(format!(
+                "Failed to receive message due to rejection or error: {:?}",
+                e
+            )))
+        }
+    }
 }
 
 /// Creates a length buffer to represent the size of the payload.
@@ -587,7 +610,7 @@ pub(crate) async fn send_request(
         // Check if WebSocket is already initialized and if it is open
         let mut web_socket = WS.with(|ws| ws.borrow_mut().clone());
 
-        // Check if curl web_socket_url is still current_url
+        // Check if requested web_socket_url is still current_url or close it
         if web_socket.is_some() {
             let current_url = web_socket.as_ref().unwrap().url();
 
@@ -608,19 +631,18 @@ pub(crate) async fn send_request(
                 Error::WebSocketCreation(format!("Failed to create WebSocket: {:?}", e))
             })?);
 
-            // Setup error and close event handlers to update WebSocket state
-            let web_socket_clone = web_socket.as_ref().unwrap().clone();
+            let web_socket_clone = web_socket.clone();
             // Save the new WebSocket in the thread-local variable
             WS.with(|ws| {
-                *ws.borrow_mut() = Some(web_socket_clone);
+                *ws.borrow_mut() = web_socket_clone;
             });
         }
 
         let web_socket_ref = web_socket.as_ref().unwrap();
-
         if web_socket_ref.ready_state() == WebSocket::CONNECTING
             || web_socket_ref.ready_state() == WebSocket::OPEN
         {
+            // Setup error and close event handlers to update WebSocket state
             let response = handle_websocket_connection(web_socket_ref, payload, request_id).await?;
             Ok(response)
         } else {
