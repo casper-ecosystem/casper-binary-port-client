@@ -586,7 +586,7 @@ pub(crate) async fn send_request(
 ) -> Result<BinaryResponseAndRequest, Error> {
     let request_id = COUNTER.fetch_add(1, Ordering::SeqCst); // Atomically increment the counter
 
-    let payload = encode_request(&request, Some(request_id))
+    let payload = encode_request(&request, request_id)
         .map_err(|e| Error::Serialization(format!("Failed to serialize request: {}", e)))?;
 
     thread_local! {

@@ -198,19 +198,28 @@ pub(crate) async fn send_request(
 ) -> Result<BinaryResponseAndRequest, Error> {
     let request_id = COUNTER.fetch_add(1, Ordering::SeqCst); // Atomically increment the counter
 
-    let payload =
-        encode_request(&request, Some(request_id)).expect("should always serialize a request");
+    let raw_bytes =
+        encode_request(&request, request_id).expect("should always serialize a request");
+    send_raw(node_address, raw_bytes, Some(request_id)).await
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) async fn send_raw(
+    node_address: &str,
+    bytes: Vec<u8>,
+    request_id: Option<u16>,
+) -> Result<BinaryResponseAndRequest, Error> {
+    let payload = BinaryMessage::new(bytes);
+
     let mut client = connect_to_node(node_address).await?;
 
-    let message = BinaryMessage::new(payload);
-
     // Send the payload length and data
-    send_payload(&mut client, &message).await?;
+    send_payload(&mut client, &payload).await?;
 
     // Read and process the response
     let response_buf = read_response(&mut client).await?;
     // Now process the response using the request_id
-    process_response(response_buf, request_id).await
+    process_response(response_buf, request_id.unwrap_or_default()).await
 }
 
 /// Encodes a binary request into a byte vector for transmission.
@@ -243,13 +252,9 @@ pub(crate) async fn send_request(
 /// identification in asynchronous communication.
 pub(crate) fn encode_request(
     req: &BinaryRequest,
-    request_id: Option<u16>,
+    request_id: u16,
 ) -> Result<Vec<u8>, bytesrepr::Error> {
-    let header = BinaryRequestHeader::new(
-        SUPPORTED_PROTOCOL_VERSION,
-        req.tag(),
-        request_id.unwrap_or_default(),
-    );
+    let header = BinaryRequestHeader::new(SUPPORTED_PROTOCOL_VERSION, req.tag(), request_id);
     let mut bytes = Vec::with_capacity(header.serialized_length() + req.serialized_length());
     header.write_bytes(&mut bytes)?;
     req.write_bytes(&mut bytes)?;

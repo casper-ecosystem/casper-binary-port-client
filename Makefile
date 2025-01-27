@@ -41,4 +41,4 @@ clean:
 	cargo clean
 
 audit:
-	cargo audit
+	cargo install cargo-audit || cargo audit

@@ -1,13 +1,17 @@
 #[cfg(not(target_arch = "wasm32"))]
-use crate::communication::common::send_request;
+use crate::communication::common::{send_raw, send_request};
 #[cfg(target_arch = "wasm32")]
 use crate::communication::wasm32::send_request;
 use crate::{communication::common::parse_response, Error};
+#[cfg(not(target_arch = "wasm32"))]
+use casper_binary_port::BinaryResponse;
 use casper_binary_port::{
     BinaryRequest, BinaryResponseAndRequest, EraIdentifier, GetRequest, GlobalStateEntityQualifier,
     GlobalStateQueryResult, GlobalStateRequest, InformationRequest, InformationRequestTag,
     RecordId, RewardResponse,
 };
+#[cfg(not(target_arch = "wasm32"))]
+use casper_types::bytesrepr::{self, FromBytes};
 use casper_types::{
     bytesrepr::ToBytes, system::auction::DelegatorKind, GlobalStateIdentifier, Key, PublicKey,
 };
@@ -83,6 +87,21 @@ pub(crate) async fn global_state_item_by_state_identifier(
     let response = send_request(node_address, request).await?;
     check_error_code(&response)?;
     parse_response::<GlobalStateQueryResult>(response.response())
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) async fn send_raw_bytes(
+    node_address: &str,
+    raw: Vec<u8>,
+) -> Result<BinaryResponse, Error> {
+    let response = send_raw(node_address, raw, None).await?;
+    check_error_code(&response)?;
+    let response_bytes = response.response().to_bytes().map_err(Error::Bytesrepr)?;
+    let (response, remainder) = FromBytes::from_bytes(&response_bytes).map_err(Error::Bytesrepr)?;
+    if !remainder.is_empty() {
+        return Err(Error::Bytesrepr(bytesrepr::Error::LeftOverBytes));
+    }
+    Ok(response)
 }
 
 pub(crate) fn check_error_code(response: &BinaryResponseAndRequest) -> Result<(), Error> {

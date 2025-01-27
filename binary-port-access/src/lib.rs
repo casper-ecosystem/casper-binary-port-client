@@ -5,6 +5,8 @@ mod communication;
 mod error;
 mod utils;
 
+#[cfg(not(target_arch = "wasm32"))]
+use casper_binary_port::BinaryResponse;
 use casper_binary_port::{
     BinaryRequest, ConsensusStatus, ConsensusValidatorChanges, EraIdentifier,
     GlobalStateQueryResult, InformationRequestTag, LastProgress, NetworkName, NodeStatus,
@@ -435,4 +437,13 @@ pub async fn protocol_version(node_address: &str) -> Result<ProtocolVersion, Err
     check_error_code(&response)?;
     let protocol_version = parse_response::<ProtocolVersion>(response.response())?;
     protocol_version.ok_or_else(|| Error::Response("unable to read protocol version".to_string()))
+}
+
+/// Sends raw bytes to the network, does no validation or assumption on structure
+#[cfg(not(target_arch = "wasm32"))]
+pub async fn send_raw_bytes(
+    node_address: &str,
+    raw_bytes: Vec<u8>,
+) -> Result<BinaryResponse, Error> {
+    utils::send_raw_bytes(node_address, raw_bytes).await
 }
