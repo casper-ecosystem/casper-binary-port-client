@@ -13,7 +13,7 @@ use casper_binary_port::{
 use casper_types::{
     bytesrepr::ToBytes, AvailableBlockRange, BlockHash, BlockHeader, BlockIdentifier,
     BlockSynchronizerStatus, ChainspecRawBytes, Digest, EraId, GlobalStateIdentifier, Key,
-    NextUpgrade, Peers, ProtocolVersion, PublicKey, SignedBlock, Transaction, TransactionHash,
+    NextUpgrade, Peers, ProtocolVersion, PublicKey, BlockWithSignatures, Transaction, TransactionHash,
 };
 
 mod communication;
@@ -78,45 +78,45 @@ pub async fn block_header_by_hash(
 }
 
 /// Returns the latest block along with signatures.
-pub async fn latest_signed_block(node_address: &str) -> Result<Option<SignedBlock>, Error> {
+pub async fn latest_block_with_signatures(node_address: &str) -> Result<Option<BlockWithSignatures>, Error> {
     let block_id: Option<BlockIdentifier> = None;
     let request = utils::make_information_get_request(
-        InformationRequestTag::SignedBlock,
+        InformationRequestTag::BlockWithSignatures,
         block_id.to_bytes()?.as_slice(),
     )?;
     let response = communication::send_request(node_address, request).await?;
     check_error_code(&response)?;
-    parse_response::<SignedBlock>(response.response())
+    parse_response::<BlockWithSignatures>(response.response())
 }
 
 /// Returns the block at the given height along with signatures.
-pub async fn signed_block_by_height(
+pub async fn block_with_signatures_by_height(
     node_address: &str,
     height: u64,
-) -> Result<Option<SignedBlock>, Error> {
+) -> Result<Option<BlockWithSignatures>, Error> {
     let block_id = Some(BlockIdentifier::Height(height));
     let request = utils::make_information_get_request(
-        InformationRequestTag::SignedBlock,
+        InformationRequestTag::BlockWithSignatures,
         block_id.to_bytes()?.as_slice(),
     )?;
     let response = communication::send_request(node_address, request).await?;
     check_error_code(&response)?;
-    parse_response::<SignedBlock>(response.response())
+    parse_response::<BlockWithSignatures>(response.response())
 }
 
 /// Returns the block with the given hash along with signatures.
-pub async fn signed_block_by_hash(
+pub async fn block_with_signatures_by_hash(
     node_address: &str,
     hash: BlockHash,
-) -> Result<Option<SignedBlock>, Error> {
+) -> Result<Option<BlockWithSignatures>, Error> {
     let block_id = Some(BlockIdentifier::Hash(hash));
     let request = utils::make_information_get_request(
-        InformationRequestTag::SignedBlock,
+        InformationRequestTag::BlockWithSignatures,
         block_id.to_bytes()?.as_slice(),
     )?;
     let response = communication::send_request(node_address, request).await?;
     check_error_code(&response)?;
-    parse_response::<SignedBlock>(response.response())
+    parse_response::<BlockWithSignatures>(response.response())
 }
 
 /// Returns the transaction with the given hash. If `with_finalized_approvals` is `false`, the

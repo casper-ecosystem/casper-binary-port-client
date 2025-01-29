@@ -182,7 +182,7 @@ checksum = "325918d6fe32f23b19878fe4b34794ae41fc19ddbe53b10571a4874d44ffd39b"
 [[package]]
 name = "casper-binary-port"
 version = "1.0.0"
-source = "git+https://github.com/casper-network/casper-node.git?branch=feat-2.0#91fbb870e76760980c8025e1ab9b552532444e1e"
+source = "git+https://github.com/teonite/casper-node.git?branch=rename_signed_block#dd69c844af304f0be8d3dedf85fe369a90ab0cc8"
 dependencies = [
  "bincode",
  "bytes",
@@ -228,7 +228,7 @@ dependencies = [
 [[package]]
 name = "casper-types"
 version = "5.0.0"
-source = "git+https://github.com/casper-network/casper-node.git?branch=feat-2.0#91fbb870e76760980c8025e1ab9b552532444e1e"
+source = "git+https://github.com/teonite/casper-node.git?branch=rename_signed_block#dd69c844af304f0be8d3dedf85fe369a90ab0cc8"
 dependencies = [
  "base16",
  "base64",

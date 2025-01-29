@@ -2,9 +2,9 @@ use casper_binary_port_access::{
     available_block_range, block_header_by_hash, block_header_by_height, block_synchronizer_status,
     chainspec_raw_bytes, consensus_status, consensus_validator_changes,
     delegator_reward_by_block_hash, delegator_reward_by_block_height, delegator_reward_by_era,
-    last_progress, latest_block_header, latest_signed_block, latest_switch_block_header,
+    last_progress, latest_block_header, latest_block_with_signatures, latest_switch_block_header,
     network_name, next_upgrade, node_status, peers, protocol_version, reactor_state,
-    signed_block_by_hash, signed_block_by_height, transaction_by_hash, uptime,
+    block_with_signatures_by_hash, block_with_signatures_by_height, transaction_by_hash, uptime,
     validator_reward_by_block_hash, validator_reward_by_block_height, validator_reward_by_era,
 };
 use casper_types::{AsymmetricType, BlockHash, DeployHash, Digest, PublicKey, TransactionHash};
@@ -22,7 +22,7 @@ pub(crate) enum Information {
         height: Option<u64>,
     },
     /// Retrieve block with signatures by height or hash.
-    SignedBlock {
+    BlockWithSignatures {
         #[clap(long, conflicts_with = "height")]
         hash: Option<String>,
         #[clap(long, conflicts_with = "hash")]
@@ -111,12 +111,12 @@ pub(super) async fn handle_information_request(
             }
             (Some(_), Some(_)) => return Err(Error::EitherHashOrHeightRequired),
         }),
-        Information::SignedBlock { hash, height } => Box::new(match (hash, height) {
-            (None, None) => latest_signed_block(node_address).await?,
-            (None, Some(height)) => signed_block_by_height(node_address, height).await?,
+        Information::BlockWithSignatures { hash, height } => Box::new(match (hash, height) {
+            (None, None) => latest_block_with_signatures(node_address).await?,
+            (None, Some(height)) => block_with_signatures_by_height(node_address, height).await?,
             (Some(hash), None) => {
                 let digest = casper_types::Digest::from_hex(hash)?;
-                signed_block_by_hash(node_address, BlockHash::new(digest)).await?
+                block_with_signatures_by_hash(node_address, BlockHash::new(digest)).await?
             }
             (Some(_), Some(_)) => return Err(Error::EitherHashOrHeightRequired),
         }),
