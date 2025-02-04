@@ -13,8 +13,8 @@ path = "src/lib.rs"
 
 # Dependencies for all compilation targets
 [dependencies]
-casper-types = { git = "https://github.com/casper-network/casper-node", default-features = false }
-casper-binary-port = { git = "https://github.com/casper-network/casper-node" }
+casper-types = { git = "https://github.com/casper-network/casper-node", branch = "dev", default-features = false }
+casper-binary-port = { git = "https://github.com/casper-network/casper-node", branch="dev" }
 thiserror = "1.0.64"
 futures = "0.3.31"
 

@@ -183,7 +183,7 @@ checksum = "325918d6fe32f23b19878fe4b34794ae41fc19ddbe53b10571a4874d44ffd39b"
 [[package]]
 name = "casper-binary-port"
 version = "1.0.0"
-source = "git+https://github.com/casper-network/casper-node#59df8cb2b4065e5e7b125949bf4c4a6a6758a31f"
+source = "git+https://github.com/casper-network/casper-node?branch=dev#40dbbf685a5aa38f9653610a3d1f3406e723e1ff"
 dependencies = [
  "bincode",
  "bytes",
@@ -233,7 +233,7 @@ dependencies = [
 [[package]]
 name = "casper-types"
 version = "5.0.0"
-source = "git+https://github.com/casper-network/casper-node#59df8cb2b4065e5e7b125949bf4c4a6a6758a31f"
+source = "git+https://github.com/casper-network/casper-node?branch=dev#40dbbf685a5aa38f9653610a3d1f3406e723e1ff"
 dependencies = [
  "base16",
  "base64",
