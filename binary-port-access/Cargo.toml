@@ -1,0 +1,50 @@
+[package]
+name = "casper-binary-port-access"
+version = "0.1.0"
+edition = "2021"
+authors = ["Rafał Chabowski <rafal@casperlabs.io>"]
+description = "Library for accessing Casper binary port."
+license = "Apache-2.0"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+name = "casper_binary_port_access"
+path = "src/lib.rs"
+
+# Dependencies for all compilation targets
+[dependencies]
+casper-types = { git = "https://github.com/casper-network/casper-node", default-features = false }
+casper-binary-port = { git = "https://github.com/casper-network/casper-node" }
+thiserror = "1.0.64"
+futures = "0.3.31"
+
+# Tokio is not compatible with wasm32 targets and is included here for non-wasm32
+# compilation targets.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = { version = "1.40.0", features = ["macros", "io-util", "time", "net"] }
+
+# Dependencies required for wasm32 compilation targets, enabling integration
+# with JavaScript environments. These dependencies are re-exported for future
+# reference to maintain compatibility and streamline WebAssembly workflows.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+# Required for binding Rust code to JavaScript when targeting WebAssembly (wasm32).
+# This will be re-exported to support wasm32 compilation targets.
+wasm-bindgen = "*"
+# Provides utilities for bridging async Rust code with JavaScript's `Promise`.
+# Re-exported for async integration in wasm32 targets.
+wasm-bindgen-futures = "*"
+# Offers low-level bindings to JavaScript's standard library.
+# Re-exported to expose core JavaScript functionality to library consumers.
+js-sys = "*"
+# Provides bindings for specific web APIs.
+# These features are enabled and re-exported to ensure WebAssembly code can interact with the browser environment.
+web-sys = { version = "0.3", features = [
+  "Blob",
+  "FileReader",
+  "ProgressEvent",
+  "WebSocket",
+  "MessageEvent",
+] }
+# Contains utility functions for working with web APIs in a WASM context.
+# Features like `serde` are enabled and re-exported for convenience when serializing/deserializing data.
+gloo-utils = { version = "0.2", default-features = false, features = ["serde"] }

@@ -10,17 +10,20 @@ all: build
 build:
 	cargo build
 
+build-for-release:
+	cargo build --release
+
 # Run the tests
 test:
 	cargo test --all-targets
 
 # Run clippy (linter) on all targets
-lint:
+lint: lint-wasm
 	cargo clippy --all-targets -- -D warnings
 
 # Run clippy on wasm32-unknown-unknown target
 lint-wasm:
-	cd binary_port_access && cargo clippy --target $(WASM_TARGET) --all-targets -- -D warnings
+	cd binary-port-access && cargo clippy --target $(WASM_TARGET) --all-targets -- -D warnings
 
 # Format the codebase using rustfmt and check for correct formatting
 fmt-check:

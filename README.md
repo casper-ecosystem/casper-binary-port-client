@@ -56,7 +56,7 @@ Options:
 
 ## Client library
 
-The `binary_port_access` directory contains source for the client library, which may be called directly rather than through the CLI binary. The CLI app `casper-binary-port-client` makes use of this library to implement its functionality.
+The `binary-port-access` directory contains source for the client library, which may be called directly rather than through the CLI binary. The CLI app `casper-binary-port-client` makes use of this library to implement its functionality.
 
 ## License
 
