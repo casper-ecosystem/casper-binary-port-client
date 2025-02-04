@@ -1,17 +1,19 @@
+#[cfg(not(target_arch = "wasm32"))]
+use crate::communication::common::{send_raw, send_request};
+#[cfg(target_arch = "wasm32")]
+use crate::communication::wasm32::send_request;
+use crate::{communication::common::parse_response, Error};
+#[cfg(not(target_arch = "wasm32"))]
+use casper_binary_port::BinaryResponse;
 use casper_binary_port::{
-    BinaryRequest, BinaryResponse, BinaryResponseAndRequest, EraIdentifier, GetRequest,
-    GlobalStateEntityQualifier, GlobalStateQueryResult, GlobalStateRequest, InformationRequest,
-    InformationRequestTag, RecordId, RewardResponse,
+    BinaryRequest, BinaryResponseAndRequest, EraIdentifier, GetRequest, GlobalStateEntityQualifier,
+    GlobalStateQueryResult, GlobalStateRequest, InformationRequest, InformationRequestTag,
+    RecordId, RewardResponse,
 };
+#[cfg(not(target_arch = "wasm32"))]
+use casper_types::bytesrepr::{self, FromBytes};
 use casper_types::{
-    bytesrepr::{self, FromBytes, ToBytes},
-    system::auction::DelegatorKind,
-    GlobalStateIdentifier, Key, PublicKey,
-};
-
-use crate::{
-    communication::{self, parse_response},
-    Error,
+    bytesrepr::ToBytes, system::auction::DelegatorKind, GlobalStateIdentifier, Key, PublicKey,
 };
 
 pub(crate) fn make_information_get_request(
@@ -46,7 +48,7 @@ pub(crate) async fn delegator_reward_by_era_identifier(
         .to_bytes()?
         .as_slice(),
     )?;
-    let response = communication::send_request(node_address, request).await?;
+    let response = send_request(node_address, request).await?;
     check_error_code(&response)?;
     parse_response::<RewardResponse>(response.response())
 }
@@ -66,7 +68,7 @@ pub(crate) async fn validator_reward_by_era_identifier(
         .to_bytes()?
         .as_slice(),
     )?;
-    let response = communication::send_request(node_address, request).await?;
+    let response = send_request(node_address, request).await?;
     parse_response::<RewardResponse>(response.response())
 }
 
@@ -82,16 +84,17 @@ pub(crate) async fn global_state_item_by_state_identifier(
     };
     let global_state_request = GlobalStateRequest::new(global_state_identifier, qualifier);
     let request = BinaryRequest::Get(GetRequest::State(Box::new(global_state_request)));
-    let response = communication::send_request(node_address, request).await?;
+    let response = send_request(node_address, request).await?;
     check_error_code(&response)?;
     parse_response::<GlobalStateQueryResult>(response.response())
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) async fn send_raw_bytes(
     node_address: &str,
     raw: Vec<u8>,
 ) -> Result<BinaryResponse, Error> {
-    let response = communication::send_raw(node_address, raw).await?;
+    let response = send_raw(node_address, raw, None).await?;
     check_error_code(&response)?;
     let response_bytes = response.response().to_bytes().map_err(Error::Bytesrepr)?;
     let (response, remainder) = FromBytes::from_bytes(&response_bytes).map_err(Error::Bytesrepr)?;

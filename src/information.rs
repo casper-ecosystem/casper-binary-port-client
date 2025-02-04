@@ -1,10 +1,10 @@
 use casper_binary_port_access::{
     available_block_range, block_header_by_hash, block_header_by_height, block_synchronizer_status,
-    chainspec_raw_bytes, consensus_status, consensus_validator_changes,
-    delegator_reward_by_block_hash, delegator_reward_by_block_height, delegator_reward_by_era,
-    last_progress, latest_block_header, latest_block_with_signatures, latest_switch_block_header,
-    network_name, next_upgrade, node_status, peers, protocol_version, reactor_state,
-    block_with_signatures_by_hash, block_with_signatures_by_height, transaction_by_hash, uptime,
+    block_with_signatures_by_hash, block_with_signatures_by_height, chainspec_raw_bytes,
+    consensus_status, consensus_validator_changes, delegator_reward_by_block_hash,
+    delegator_reward_by_block_height, delegator_reward_by_era, last_progress, latest_block_header,
+    latest_block_with_signatures, latest_switch_block_header, network_name, next_upgrade,
+    node_status, peers, protocol_version, reactor_state, transaction_by_hash, uptime,
     validator_reward_by_block_hash, validator_reward_by_block_height, validator_reward_by_era,
 };
 use casper_types::{AsymmetricType, BlockHash, DeployHash, Digest, PublicKey, TransactionHash};

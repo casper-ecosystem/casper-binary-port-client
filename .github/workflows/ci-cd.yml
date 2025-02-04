@@ -21,7 +21,12 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+          profile: minimal
+          components: rustfmt, clippy
           target: wasm32-unknown-unknown
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
 
       - name: Install dependencies
         run: |
@@ -35,11 +40,8 @@ jobs:
       - name: Run tests
         run: make test
 
-      - name: Run Clippy linter
+      - name: Run Clippy linter and for wasm target
         run: make lint
-
-      # - name: Run Clippy linter for wasm target
-      #   run: make lint-wasm
 
       - name: Check code formatting
         run: make fmt-check
