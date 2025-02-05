@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["binary-port-access", "binary-port-access"]
+members = ["binary-port-access"]
 
 [package]
 name = "casper-binary-port-client"
