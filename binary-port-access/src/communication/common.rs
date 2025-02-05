@@ -9,7 +9,6 @@ use casper_types::{
     ProtocolVersion,
 };
 use std::sync::atomic::AtomicU16;
-#[cfg(not(target_arch = "wasm32"))]
 use std::sync::atomic::Ordering;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Duration;
@@ -27,6 +26,15 @@ pub(crate) const LENGTH_FIELD_SIZE: usize = 4;
 const TIMEOUT_DURATION: Duration = Duration::from_secs(5);
 
 pub static COUNTER: AtomicU16 = AtomicU16::new(0);
+
+/// Initializes the internal request id counter to the specified value.
+///
+/// The request ids are ordinal; by default, starting at 0. This function sets
+/// the counter value to the provided id. The subsequent requests IDs will continue
+/// being ordinally numbered, starting from the provided value.
+pub fn initialize_request_id(id: u16) {
+    COUNTER.store(id, Ordering::SeqCst);
+}
 
 /// Establishes an asynchronous TCP connection to a specified node address.
 ///
