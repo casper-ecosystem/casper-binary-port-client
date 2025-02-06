@@ -33,8 +33,8 @@ pub(super) enum Commands {
     },
     /// Sends raw bytes to the network.
     /// You can provide data to this command either with `--file-path` or `--raw-hex` (exactly one of them needs to be provided).
-    /// Passing `--file-path <FILE_PATH>` will cause the client to read bytes from <FILE_PATH> and send them to the network as-is (the bytes in the file will be interpreted as a bytesrepr-serialized BinaryRequest struct)
-    /// Passing `--raw-hex <HEX_STR>` will cause the client to read HEX_STR and decode it's bytes as if it was a hex string (the bytes in the file will be interpreted as a bytesrepr-serialized BinaryRequest struct)
+    /// Passing `--file-path <FILE_PATH>` will cause the client to read bytes from <FILE_PATH> and send them to the network as-is (the bytes in the file will be interpreted as a bytesrepr-serialized Command struct)
+    /// Passing `--raw-hex <HEX_STR>` will cause the client to read HEX_STR and decode it's bytes as if it was a hex string (the bytes in the file will be interpreted as a bytesrepr-serialized Command struct)
     ///
     /// This command handles the result in two ways:
     ///

@@ -2,12 +2,9 @@ use crate::Error;
 #[cfg(not(target_arch = "wasm32"))]
 use casper_binary_port::BinaryMessage;
 use casper_binary_port::{
-    BinaryRequest, BinaryRequestHeader, BinaryResponse, BinaryResponseAndRequest, PayloadEntity,
+    BinaryResponse, BinaryResponseAndRequest, Command, CommandHeader, PayloadEntity,
 };
-use casper_types::{
-    bytesrepr::{self, FromBytes, ToBytes},
-    ProtocolVersion,
-};
+use casper_types::bytesrepr::{self, FromBytes, ToBytes};
 use std::sync::atomic::AtomicU16;
 use std::sync::atomic::Ordering;
 #[cfg(not(target_arch = "wasm32"))]
@@ -19,8 +16,6 @@ use tokio::{
     time::timeout,
 };
 
-// TODO[RC]: Do not hardcode this.
-pub(crate) const SUPPORTED_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::from_parts(2, 0, 0);
 pub(crate) const LENGTH_FIELD_SIZE: usize = 4;
 #[cfg(not(target_arch = "wasm32"))]
 const TIMEOUT_DURATION: Duration = Duration::from_secs(5);
@@ -175,7 +170,7 @@ async fn read_response(client: &mut TcpStream) -> Result<Vec<u8>, Error> {
 ///
 /// - `node_address`: A string slice that holds the address of the node to connect to,
 ///   typically in the format "hostname:28101".
-/// - `request`: An instance of `BinaryRequest` representing the request data to be sent.
+/// - `request`: An instance of `Command` representing the request data to be sent.
 ///
 /// # Returns
 ///
@@ -202,7 +197,7 @@ async fn read_response(client: &mut TcpStream) -> Result<Vec<u8>, Error> {
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) async fn send_request(
     node_address: &str,
-    request: BinaryRequest,
+    request: Command,
 ) -> Result<BinaryResponseAndRequest, Error> {
     let request_id = COUNTER.fetch_add(1, Ordering::SeqCst); // Atomically increment the counter
 
@@ -232,13 +227,13 @@ pub(crate) async fn send_raw(
 
 /// Encodes a binary request into a byte vector for transmission.
 ///
-/// This function serializes a `BinaryRequest` along with a specified request ID (if provided)
+/// This function serializes a `Command` along with a specified request ID (if provided)
 /// into a byte vector. The encoded data includes a header containing the protocol version,
 /// request tag, and the request ID. This byte vector can then be sent over a network connection.
 ///
 /// # Parameters
 ///
-/// - `req`: A reference to a `BinaryRequest` instance representing the request to be serialized.
+/// - `req`: A reference to a `Command` instance representing the request to be serialized.
 /// - `request_id`: An optional `u16` representing the unique identifier for the request. If not provided,
 ///   a default value of `0` is used.
 ///
@@ -258,11 +253,8 @@ pub(crate) async fn send_raw(
 ///
 /// The request ID helps in tracking requests and their corresponding responses, allowing for easier
 /// identification in asynchronous communication.
-pub(crate) fn encode_request(
-    req: &BinaryRequest,
-    request_id: u16,
-) -> Result<Vec<u8>, bytesrepr::Error> {
-    let header = BinaryRequestHeader::new(SUPPORTED_PROTOCOL_VERSION, req.tag(), request_id);
+pub(crate) fn encode_request(req: &Command, request_id: u16) -> Result<Vec<u8>, bytesrepr::Error> {
+    let header = CommandHeader::new(req.tag(), request_id);
     let mut bytes = Vec::with_capacity(header.serialized_length() + req.serialized_length());
     header.write_bytes(&mut bytes)?;
     req.write_bytes(&mut bytes)?;

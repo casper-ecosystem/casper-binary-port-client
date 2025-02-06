@@ -8,10 +8,9 @@ mod utils;
 #[cfg(not(target_arch = "wasm32"))]
 use casper_binary_port::BinaryResponse;
 use casper_binary_port::{
-    BinaryRequest, ConsensusStatus, ConsensusValidatorChanges, EraIdentifier,
-    GlobalStateQueryResult, InformationRequestTag, LastProgress, NetworkName, NodeStatus,
-    ReactorStateName, RecordId, RewardResponse, SpeculativeExecutionResult,
-    TransactionWithExecutionInfo, Uptime,
+    Command, ConsensusStatus, ConsensusValidatorChanges, EraIdentifier, GlobalStateQueryResult,
+    InformationRequestTag, LastProgress, NetworkName, NodeStatus, ReactorStateName, RecordId,
+    RewardResponse, SpeculativeExecutionResult, TransactionWithExecutionInfo, Uptime,
 };
 use casper_types::{
     bytesrepr::ToBytes, AvailableBlockRange, BlockHash, BlockHeader, BlockIdentifier,
@@ -413,7 +412,7 @@ pub async fn try_accept_transaction(
     node_address: &str,
     transaction: Transaction,
 ) -> Result<(), Error> {
-    let request = BinaryRequest::TryAcceptTransaction { transaction };
+    let request = Command::TryAcceptTransaction { transaction };
     let response = send_request(node_address, request).await?;
     check_error_code(&response)
 }
@@ -423,7 +422,7 @@ pub async fn try_speculative_execution(
     node_address: &str,
     transaction: Transaction,
 ) -> Result<SpeculativeExecutionResult, Error> {
-    let request = BinaryRequest::TrySpeculativeExec { transaction };
+    let request = Command::TrySpeculativeExec { transaction };
     let response = send_request(node_address, request).await?;
 
     check_error_code(&response)?;
