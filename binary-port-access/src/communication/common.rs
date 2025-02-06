@@ -2,7 +2,7 @@ use crate::Error;
 #[cfg(not(target_arch = "wasm32"))]
 use casper_binary_port::BinaryMessage;
 use casper_binary_port::{
-    BinaryRequestHeader, BinaryResponse, BinaryResponseAndRequest, Command, PayloadEntity,
+    BinaryResponse, BinaryResponseAndRequest, Command, CommandHeader, PayloadEntity,
 };
 use casper_types::bytesrepr::{self, FromBytes, ToBytes};
 use std::sync::atomic::AtomicU16;
@@ -244,7 +244,7 @@ pub(crate) async fn send_raw(
 /// The request ID helps in tracking requests and their corresponding responses, allowing for easier
 /// identification in asynchronous communication.
 pub(crate) fn encode_request(req: &Command, request_id: u16) -> Result<Vec<u8>, bytesrepr::Error> {
-    let header = BinaryRequestHeader::new(req.tag(), request_id);
+    let header = CommandHeader::new(req.tag(), request_id);
     let mut bytes = Vec::with_capacity(header.serialized_length() + req.serialized_length());
     header.write_bytes(&mut bytes)?;
     req.write_bytes(&mut bytes)?;
