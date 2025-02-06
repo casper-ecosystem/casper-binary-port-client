@@ -13,9 +13,9 @@ path = "src/lib.rs"
 
 # Dependencies for all compilation targets
 [dependencies]
-casper-types = { git = "https://github.com/casper-network/casper-node", branch = "dev", default-features = false }
-casper-binary-port = { git = "https://github.com/casper-network/casper-node", branch="dev" }
-thiserror = "1.0.64"
+casper-types.workspace = true
+casper-binary-port.workspace = true
+thiserror.workspace = true
 futures = "0.3.31"
 
 # Tokio is not compatible with wasm32 targets and is included here for non-wasm32

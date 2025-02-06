@@ -1,6 +1,6 @@
 use crate::communication::common::{encode_request, process_response, COUNTER, LENGTH_FIELD_SIZE};
 use crate::Error;
-use casper_binary_port::{BinaryRequest, BinaryResponseAndRequest};
+use casper_binary_port::{BinaryResponseAndRequest, Command};
 use gloo_utils::format::JsValueSerdeExt;
 use js_sys::{JsString, Promise, Reflect};
 use node_tcp_helper::generate_tcp_script;
@@ -561,7 +561,7 @@ async fn read_response(response_bytes: Vec<u8>) -> Result<Vec<u8>, Error> {
 /// - `node_address`: A `&str` representing the address of the node to which
 ///   the request will be sent. This should include the host and port (e.g.,
 ///   "localhost:28101").
-/// - `request`: A `BinaryRequest` instance containing the data to be sent.
+/// - `request`: A `Command` instance containing the data to be sent.
 ///
 /// # Returns
 ///
@@ -582,7 +582,7 @@ async fn read_response(response_bytes: Vec<u8>) -> Result<Vec<u8>, Error> {
 /// for WebAssembly applications where communication with a node server is required.
 pub(crate) async fn send_request(
     node_address: &str,
-    request: BinaryRequest,
+    request: Command,
 ) -> Result<BinaryResponseAndRequest, Error> {
     let request_id = COUNTER.fetch_add(1, Ordering::SeqCst); // Atomically increment the counter
 
