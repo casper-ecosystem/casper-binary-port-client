@@ -10,14 +10,17 @@ authors = ["Rafał Chabowski <rafal@casperlabs.io>"]
 description = "CLI for Casper binary port."
 license = "Apache-2.0"
 
-[dependencies]
-casper-types = { git = "https://github.com/casper-network/casper-node", branch = "dev", features = [
-    "std-fs-io",
-] }
+[workspace.dependencies]
+casper-types = { git = "https://github.com/casper-network/casper-node", branch = "dev", default-features = false }
 casper-binary-port = { version = "1.0.0", git = "https://github.com/casper-network/casper-node", branch = "dev" }
+thiserror = "2.0.11"
+
+[dependencies]
+casper-types = { workspace = true, features = ["std-fs-io"] }
+casper-binary-port.workspace = true
+thiserror.workspace = true
 casper-binary-port-access = { path = "./binary-port-access" }
 clap = { version = "4.5.20", features = ["derive", "wrap_help"] }
-thiserror = "1.0.64"
 tokio = { version = "1.41.0", features = ["macros", "rt", "net"] }
 hex = "0.4.3"
 serde = { version = "1.0.211", features = ["derive"] }

@@ -6,7 +6,7 @@ use crate::{communication::common::parse_response, Error};
 #[cfg(not(target_arch = "wasm32"))]
 use casper_binary_port::BinaryResponse;
 use casper_binary_port::{
-    BinaryRequest, BinaryResponseAndRequest, EraIdentifier, GetRequest, GlobalStateEntityQualifier,
+    BinaryResponseAndRequest, Command, EraIdentifier, GetRequest, GlobalStateEntityQualifier,
     GlobalStateQueryResult, GlobalStateRequest, InformationRequest, InformationRequestTag,
     RecordId, RewardResponse,
 };
@@ -19,14 +19,14 @@ use casper_types::{
 pub(crate) fn make_information_get_request(
     tag: InformationRequestTag,
     key: &[u8],
-) -> Result<BinaryRequest, Error> {
+) -> Result<Command, Error> {
     let information_request = InformationRequest::try_from((tag, key))?;
     let get_request = information_request.try_into()?;
-    Ok(BinaryRequest::Get(get_request))
+    Ok(Command::Get(get_request))
 }
 
-pub(crate) fn make_record_request(record_id: RecordId, key: &[u8]) -> BinaryRequest {
-    BinaryRequest::Get(GetRequest::Record {
+pub(crate) fn make_record_request(record_id: RecordId, key: &[u8]) -> Command {
+    Command::Get(GetRequest::Record {
         key: key.to_vec(),
         record_type_tag: record_id as u16,
     })
@@ -83,7 +83,7 @@ pub(crate) async fn global_state_item_by_state_identifier(
         path,
     };
     let global_state_request = GlobalStateRequest::new(global_state_identifier, qualifier);
-    let request = BinaryRequest::Get(GetRequest::State(Box::new(global_state_request)));
+    let request = Command::Get(GetRequest::State(Box::new(global_state_request)));
     let response = send_request(node_address, request).await?;
     check_error_code(&response)?;
     parse_response::<GlobalStateQueryResult>(response.response())
