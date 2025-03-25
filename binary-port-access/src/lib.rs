@@ -18,6 +18,7 @@ use casper_types::{
     GlobalStateIdentifier, Key, NextUpgrade, Peers, ProtocolVersion, PublicKey, Transaction,
     TransactionHash,
 };
+pub use communication::common::initialize_request_id;
 use communication::common::parse_response;
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) use communication::common::send_request;

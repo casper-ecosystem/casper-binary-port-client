@@ -2,8 +2,10 @@ use std::{fs::File, io::Read, process::ExitCode};
 
 use crate::error::Error;
 use args::Commands;
+use casper_binary_port_access::initialize_request_id;
 use clap::Parser;
 use information::handle_information_request;
+use rand::Rng;
 use raw::{handle_raw, OutputOption};
 use record::handle_record_request;
 use state::handle_state_request;
@@ -23,6 +25,13 @@ mod utils;
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
     let args = args::Args::parse();
+
+    // The CLI is stateless and short-lived, so ordinally counting request IDs
+    // from 0 upwards will certainly bring about collisions in cases of subsequent
+    // commands being issued.
+    //
+    // To remedy this, we'll explicitly initialize the counter with a random u16 value.
+    initialize_request_id(rand::rng().random());
 
     let result = match args.commands {
         Commands::Information(req) => handle_information_request(&args.node_address, req).await,
