@@ -6,6 +6,6 @@
 pub mod common;
 
 /// - [`wasm32`]: Contains WebAssembly-specific (`wasm32` target) communication utilities,
-///               available only when compiled for WebAssembly.
+///   Available only when compiled for WebAssembly.
 #[cfg(target_arch = "wasm32")]
 pub mod wasm32;
