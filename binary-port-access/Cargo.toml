@@ -48,7 +48,3 @@ web-sys = { version = "0.3", features = [
 # Contains utility functions for working with web APIs in a WASM context.
 # Features like `serde` are enabled and re-exported for convenience when serializing/deserializing data.
 gloo-utils = { version = "0.2", default-features = false, features = ["serde"] }
-
-[patch.crates-io]
-casper-types = { git = "https://github.com/casper-network/casper-node", branch = "dev" }
-casper-binary-port = { git = "https://github.com/casper-network/casper-node", branch = "dev" }
