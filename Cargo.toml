@@ -13,7 +13,7 @@ license = "Apache-2.0"
 [workspace.dependencies]
 casper-types = { version = "7.0.0" }
 casper-binary-port = { version = "1.1.1" }
-thiserror = "2.0.17"
+thiserror = "2.0.18"
 
 [dependencies]
 casper-types = { workspace = true, features = ["std-fs-io"] }
