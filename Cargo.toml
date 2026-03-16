@@ -11,7 +11,7 @@ description = "CLI for Casper binary port."
 license = "Apache-2.0"
 
 [workspace.dependencies]
-casper-types = { version = "6.0.1" }
+casper-types = { version = "7.0.0" }
 casper-binary-port = { version = "1.1.1" }
 thiserror = "2.0.17"
 
