@@ -8,7 +8,7 @@ use casper_binary_port_access::{
     validator_reward_by_block_hash, validator_reward_by_block_height, validator_reward_by_era,
 };
 use casper_types::{AsymmetricType, BlockHash, DeployHash, Digest, PublicKey, TransactionHash};
-use clap::{command, ArgGroup, Subcommand};
+use clap::{ArgGroup, Subcommand};
 
 use crate::{error::Error, json_print::JsonPrintable};
 
