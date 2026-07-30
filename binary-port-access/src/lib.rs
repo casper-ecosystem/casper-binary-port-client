@@ -139,7 +139,7 @@ pub async fn transaction_by_hash(
         InformationRequestTag::Transaction,
         hash.to_bytes()?
             .into_iter()
-            .chain(with_finalized_approvals.to_bytes()?.into_iter())
+            .chain(with_finalized_approvals.to_bytes()?)
             .collect::<Vec<_>>()
             .as_slice(),
     )?;
