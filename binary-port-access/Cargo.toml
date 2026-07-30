@@ -16,12 +16,12 @@ path = "src/lib.rs"
 casper-types.workspace = true
 casper-binary-port.workspace = true
 thiserror.workspace = true
-futures = "0.3.31"
+futures = "0.3.33"
 
 # Tokio is not compatible with wasm32 targets and is included here for non-wasm32
 # compilation targets.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio = { version = "1.40.0", features = ["macros", "io-util", "time", "net"] }
+tokio = { version = "1.53.1", features = ["macros", "io-util", "time", "net"] }
 
 # Dependencies required for wasm32 compilation targets, enabling integration
 # with JavaScript environments. These dependencies are re-exported for future
